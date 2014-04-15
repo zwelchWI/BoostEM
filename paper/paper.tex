@@ -1,0 +1,83 @@
+\documentclass[letterpaper,12pt]{article}
+% define the title
+\usepackage{subfig}
+
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{multirow}
+\usepackage{array}
+
+\usepackage{epigraph}
+\usepackage{url}
+
+% \epigraphsize{\small}% Default
+\setlength\epigraphwidth{16cm}
+\setlength\epigraphrule{1pt}
+\usepackage[margin=1in]{geometry}
+
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\epigraph}{\@epitext{#1}}{\itshape\@epitext{#1}}{}{}
+\makeatother\usepackage{algorithm}
+\usepackage{multirow}
+\usepackage{algpseudocode}
+\begin{document}
+% generates the title
+\bibliographystyle{acm}
+
+\begin{titlepage}
+\begin{center}
+
+% Upper part of the page. The $'$~$'$ is needed because \\
+% only works if a paragraph has started.
+
+\textsc{\huge Bad Commit Smells}\\[0.5cm]
+\textsc{ Those Who Do Not Learn From Their Commit History Will be Doomed to Revert it}\\[1.0cm]
+
+
+% Author and supervisor
+\begin{minipage}{0.4\textwidth}
+\begin{flushleft} \large
+Steven \textsc{Johnson}
+\end{flushleft}
+\end{minipage}
+\begin{minipage}{0.4\textwidth}
+\begin{flushright} \large
+Zach \textsc{Welch}
+\end{flushright}
+\end{minipage}\\[1.5cm]
+
+\large University of Wisconsin \textsc{Madison}\\[1.5cm]
+
+\begin{abstract}
+THIS SHOULD BE OUR ABSTRACT
+\end{abstract}
+
+
+\vfill
+
+% Bottom of the page
+{\large \today}
+
+\end{center}
+\end{titlepage}
+
+% insert the table of contents
+\tableofcontents
+\listoffigures
+\listoftables
+\epigraph{Yeah Science!!}{ \textup{Jesse Pinkman}}
+
+\section{Introduction}
+\section{Related Work}
+\section{Approach}
+
+
+\bibliography{Master}
+
+
+
+% that`s all folks
+\end{document}
+
+
