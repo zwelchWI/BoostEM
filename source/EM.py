@@ -6,6 +6,11 @@ import math
 def Normal(Mu,Sigma,x):
     return math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*np.linalg.det(Sigma))    
 
+def log2(val):
+    if val == 0.0:
+        return 0.0
+    return math.log(val,2)
+
 def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     #L and U are lists of tuples L being labeled data and U being unlabeled data.
     #maxIter is the maximum number of iterations, -1 means dont stop
@@ -47,10 +52,9 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
 
     ndx = -1
     diff = None
-    while ndx < maxIter and threshold > diff:
-        if maxIter>0:
-            ndx=ndx+1
-        
+    condition = True
+    while condition:
+                
         #E step
         gammas = np.matrix(np.zeros([len(U),len(Ys)]))
 
@@ -95,7 +99,31 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             Mus[yNdx] = Mu
 
         #need to calculate difference in log likelihood
+        logLike = 0.0
 
+        for l in L:
+            yNdx = Ys.index(l[1])
+            logLike = logLike + log2(Pi[yNdx]*Normal(Mus[yNdx],Sigmas[yNdx],l[0].values()))
+        for u in U:
+            hold = 0.0
+            for yNdx in range(len(Ys)):
+                hold = hold + Pi[yNdx]*Normal(Mus[yNdx],Sigmas[yNdx],u[0].values()) 
+            logLike = logLike + log2(hold)
+        if diff is None:
+            #first iter
+            diff = threshold
+            newVal = logLike
+        else:
+            oldVal = newVal
+            newVal= logLike
+            diff = newVal-oldVal
+            print diff
+        
+        if maxIter>0:
+            ndx=ndx+1
+            condition = ndx < maxIter and threshold <= diff
+        else:
+            condition = threshold <= diff
     return gammas.tolist()
            
         
@@ -106,12 +134,12 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
 
 L=[[{1:1},-1.0],[{1:0},-1.0],[{1:2},1.0],[{1:3},1.0]]
 U=[[{1:1.5},None]]
-Wl=[.25,.25,.25,.25]
+Wl=[.6,.2,.1,.1]
 Wu=[1]
 Ys=[-1.0,1.0]
 
 
-x=EM(L,U,Wl,Wu,Ys,5,.1)
+x=EM(L,U,Wl,Wu,Ys,-1,.0001)
 print x
 
 
