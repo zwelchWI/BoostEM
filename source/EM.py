@@ -1,8 +1,8 @@
 import sys
 import numpy as np
 import math
+import getopt
 
-# test
 
 def Normal(Mu,Sigma,x):
     return math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*np.linalg.det(Sigma))    
@@ -127,7 +127,177 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             condition = threshold <= diff
     return gammas.tolist()
            
+def info():
+    """ prints how to use this tool """
+    print """
+    ------------------------------------------------------------------
+    here let me help you with that:
+    -h or --help            prints this list of commands
+    -input = file           arff input file
+    -size = n               first n instances in input will be labeled
+    -thresh =               log linear threshold difference for EM
+    -maxiter =              max iterations for EM
+    -tboost =               number of iterations for boost
+    -learner                classifier to use
+    ------------------------------------------------------------------
+    """    
+
+def readInputFile(fileName, labeledSize):
+    f = open(fileName)
+
+    # clear the relation line
+    while True:
+        l = f.readline()
+        if "@relation" in l:
+            break
+
+    # datasets
+    L = []
+    U = []
+    attributes = []
+
+    # read in the attributes, we only care about
+    # the labels of the last one (the class attribute)
+    while True:
+        line = f.readline()
+        if "@data" in line:
+            break
+        line = line.strip()
+        line = line.split('@attribute ')[1]
+        line = line.replace(" ", "")
+        line = line.replace("{", "")
+        line = line.replace("}", "")
+        line = line.split("'")
+
+        attr = line[1]
+        vals = line[2]
+        vals = vals.split(",")
+        attributes.append(attr)
+    
+    Ys = vals
+
+    count = 0
+
+    # now get the dataset
+    for line in f:
+        dict = {}
+        data = line.strip().replace(" ", "").split(",")
+        for i in xrange(len(attributes) - 1):
+            dict[attributes[i]] = data[i]
+        if count < int(labeledSize):
+            # add the tuple of feature dictionary, labeled class value
+            L.append((dict, data[len(attributes) - 1])) 
+        else:
+            # add the tuple of feature dictionary, None
+            U.append((dict, None))
+        count+=1
+
+    f.close()
+    return (attributes, L, U, Ys)
+
+def normalize(Wl, Wu):
+    lSum = 0
+    uSum = 0
+
+    for weight in Wl:
+        lSum += weight
+    for weight in Wu:
+        uSum += weight
+
+    nWl = []
+    nWu = []
+
+    for weight in Wl:
+        nWl.append(weight/lSum)
+    for weight in Wu:
+        nWu.append(weight/uSum)
+
+    return (nWl, nWu)
+
+
+
+
+def main():
+    try:
+        options, remainder = getopt.getopt(sys.argv[1:], 'h', ["help", "input=", 
+            "size=", "thresh=", "maxiter=", "tboost=", "learner="])
+    except getopt.GetoptError, e:
+        print str(e)
+        info()
+        sys.exit(2)
+
+    inputArff = None
+    labeledSize = 0
+    thresh = .0001
+    maxIter = -1
+    tboost = 200
+    classifiers = ['bayes']
+    learner = ""
+
+    for o, a in options:
+        if o in ("-h", "--help"):
+            info()
+            sys.exit(2);
+        elif o in ("--input"):
+            inputArff = a
+        elif o in ("--size"):
+            labeledSize = int(a)
+        elif o in ("--thresh"):
+            thresh = float(a)
+        elif o in ("--maxiter"):
+            maxIter = int(a)
+        elif o in ("--tboost"):
+            tboost = int(a)
+        elif o in ("--learner"):
+            learner = a
+        else:
+            print "unknown option: " + o
+            info()
+            sys.exit(2)
+
+
+    if not inputArff:
+        print "\ninput file needed. (use --input=)"
+        sys.exit(2)
+
+    if labeledSize < 1:
+        print "\nsize argument needed. (use --size)"
+        sys.exit(2)
+    if not learner:
+        print "\nlearner needed. (use --learner=)"
+        sys.exit(2)
+
+    (attributes, L, U, Ys) = readInputFile(inputArff, labeledSize)
+
+    # do boost stuff now
+    Wl = []
+    Wu = []
+
+    Hs = []
+
+    for i in xrange(len(L)):
+        Wl.append(1)
+
+    for i in xrange(len(U)):
+        Wu.append(1)
+
+    # da boost loop
+    for i in xrange(tboost):
+        (Wl, Wu) = normalize(Wl, Wu)
+        Pu = EM(L, U, Wl, Wu, Ys, maxIter, thresh)
+
+        # learner part
+        if(learner in 'dt'):
+            # id3 decision tree, may need full instance counts (not weights)
+            print 'add in dt code'
+            # add model to Hs list
+        elif(learner in 'bayes'):
+            # naive bayes
+            print 'add in bayes code'
+            # add model to Hs list
+
         
+
 
 
 
@@ -141,13 +311,7 @@ Ys=[-1.0,1.0]
 
 
 x=EM(L,U,Wl,Wu,Ys,-1,.0001)
-print x
+print x,"!"
 
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    main()
