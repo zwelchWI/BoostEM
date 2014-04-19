@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import math
 
+# test
 
 def Normal(Mu,Sigma,x):
     return math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*np.linalg.det(Sigma))    
