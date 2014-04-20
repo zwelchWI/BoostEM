@@ -7,11 +7,11 @@
 % 
 @RELATION BANKNOTE
 
-@ATTRIBUTE variance  NUMERIC
-@ATTRIBUTE skewness   NUMERIC
-@ATTRIBUTE curtosis  NUMERIC
-@ATTRIBUTE entropy   NUMERIC
-@ATTRIBUTE class        {0,1}
+@ATTRIBUTE 'variance'  {NUMERIC}
+@ATTRIBUTE 'skewness'   NUMERIC
+@ATTRIBUTE 'curtosis'  NUMERIC
+@ATTRIBUTE 'entropy'   NUMERIC
+@ATTRIBUTE 'class'        {0,1}
   
 @DATA
 3.6216,8.6661,-2.8073,-0.44699,0
