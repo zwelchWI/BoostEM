@@ -364,6 +364,7 @@ def main():
         for i in xrange(len(U)):
             if learner in 'dt':
                 # TODO ::: how to decide error for our unlabeled instances?
+                eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(L[i][0]))])
                 eps += 0.0
             elif learner in 'bayes':
                 print 'todo'
@@ -389,8 +390,7 @@ def main():
         for i in xrange(len(U)):
             if learner in 'dt':
                 # TODO ::: how to reweight our unlabeled instances?
-                if actual == predicted:
-                    Wu[i] *= beta
+                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(L[i][0]))])
             elif learner in 'bayes':
                 print 'todo'
 
