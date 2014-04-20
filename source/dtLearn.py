@@ -221,7 +221,7 @@ class id3:
 					if datapoint[self.attribute[0]] == value:
 						newdataset.append(datapoint)
 
-				kid = id3(newattributes, newdataset)
+				kid = id3(newattributes, newdataset, self.allattributes, self.m)
 				kid.maketree()
 				self.children.append(kid)
 		else:
@@ -234,11 +234,11 @@ class id3:
 			set1 = sorteddata[:self.splitindex]
 			set2 = sorteddata[self.splitindex:]
 			
-			kid = id3(newattributes, set1, self.allattributes)
+			kid = id3(newattributes, set1, self.allattributes, self.m)
 			kid.maketree()
 			self.children.append(kid)
 			
-			kid = id3(newattributes, set2, self.allattributes)
+			kid = id3(newattributes, set2, self.allattributes, self.m)
 			kid.maketree()
 			self.children.append(kid)
 

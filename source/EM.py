@@ -310,12 +310,11 @@ def main():
         Pu = EM(L, U, Wl, Wu, Ys, maxIter, thresh)
 
         # learner part
-        if(learner in 'dt'):
+        if learner in 'dt':
             # id3 decision tree, may need full instance counts (not weights)
             dataset = []
 
             for i in xrange(len(L)):
-                print i, len(Pu), len(L)
                 instance = L[i][0]
                 instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
 
@@ -337,24 +336,63 @@ def main():
 
             print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
 
-            tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=2)
+            tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=100.0)
             tree.maketree()
             Hs.append(tree)
             print "\nGenerated ID3 Tree: " + tree.display()
 
-            # add model to Hs list
-        elif(learner in 'bayes'):
+        elif learner in 'bayes':
             # naive bayes
             print 'add in bayes code'
             # add model to Hs list
 
-        # compute new weights
-        Wl = []
-        Wu = []
+        # compute error value
+        eps = 0.0
 
-        for l in L:
-            predY = predict(l[0], learner)
-            
+        for i in xrange(len(L)):
+            if learner in 'dt':
+                actual = L[i][1]
+                predicted = Hs[-1].classify(L[i][0])
+                #print actual, predicted
+
+                if actual != predicted:
+                    eps += Wl[i]
+
+            elif learner in 'bayes':
+                print 'todo'
+
+        for i in xrange(len(U)):
+            if learner in 'dt':
+                # TODO ::: how to decide error for our unlabeled instances?
+                eps += 0.0
+            elif learner in 'bayes':
+                print 'todo'
+
+        beta = eps / (1.0 - eps)
+        print "epsilon:", eps, "  beta:", beta
+
+
+
+        # compute new weights
+        # downweight correct examples
+        for i in xrange(len(L)):
+            if learner in 'dt':
+                actual = L[i][1]
+                predicted = Hs[-1].classify(L[i][0])
+
+                if actual == predicted:
+                    Wl[i] *= beta
+
+            elif learner in 'bayes':
+                print 'todo'
+
+        for i in xrange(len(U)):
+            if learner in 'dt':
+                # TODO ::: how to reweight our unlabeled instances?
+                if actual == predicted:
+                    Wu[i] *= beta
+            elif learner in 'bayes':
+                print 'todo'
 
 
 
