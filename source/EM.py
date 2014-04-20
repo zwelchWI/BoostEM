@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import math
 import getopt
+from dtLearn import id3
 
 
 def Normal(Mu,Sigma,x):
@@ -147,7 +148,7 @@ def readInputFile(fileName, labeledSize):
 
     # clear the relation line
     while True:
-        l = f.readline()
+        l = f.readline().lower()
         if "@relation" in l:
             break
 
@@ -159,10 +160,12 @@ def readInputFile(fileName, labeledSize):
     # read in the attributes, we only care about
     # the labels of the last one (the class attribute)
     while True:
-        line = f.readline()
+        line = f.readline().lower()
         if "@data" in line:
             break
         line = line.strip()
+        if len(line) == 0:
+            continue # handles blank lines
         line = line.split('@attribute ')[1]
         line = line.replace(" ", "")
         line = line.replace("{", "")
@@ -172,7 +175,7 @@ def readInputFile(fileName, labeledSize):
         attr = line[1]
         vals = line[2]
         vals = vals.split(",")
-        attributes.append(attr)
+        attributes.append((attr, vals))
     
     Ys = vals
 
@@ -183,16 +186,22 @@ def readInputFile(fileName, labeledSize):
         dict = {}
         data = line.strip().replace(" ", "").split(",")
         for i in xrange(len(attributes) - 1):
-            dict[attributes[i]] = data[i]
-        if count < int(labeledSize):
+            if len(attributes[i][1]) == 1:
+                # real valued- data
+                dict[attributes[i][0]] = float(data[i])
+            else:
+                dict[attributes[i][0]] = data[i]
+        if count < labeledSize:
             # add the tuple of feature dictionary, labeled class value
             L.append((dict, data[len(attributes) - 1])) 
         else:
             # add the tuple of feature dictionary, None
             U.append((dict, None))
-        count+=1
+        count += 1
 
     f.close()
+    print "attributes:", len(attributes), "  labeled:", len(L), "  unlabeled:", len(U)
+    print "class values:", Ys[0], Ys[1]
     return (attributes, L, U, Ys)
 
 def normalize(Wl, Wu):
@@ -208,13 +217,11 @@ def normalize(Wl, Wu):
     nWu = []
 
     for weight in Wl:
-        nWl.append(weight/lSum)
+        nWl.append(float(weight)/lSum)
     for weight in Wu:
-        nWu.append(weight/uSum)
+        nWu.append(float(weight)/uSum)
 
     return (nWl, nWu)
-
-
 
 
 def main():
@@ -269,6 +276,7 @@ def main():
 
     (attributes, L, U, Ys) = readInputFile(inputArff, labeledSize)
 
+    print "we are ready for the boosting, captain"
     # do boost stuff now
     Wl = []
     Wu = []
@@ -282,36 +290,75 @@ def main():
         Wu.append(1)
 
     # da boost loop
-    for i in xrange(tboost):
+    for t in xrange(tboost):
+        print "boost cycle", t
         (Wl, Wu) = normalize(Wl, Wu)
         Pu = EM(L, U, Wl, Wu, Ys, maxIter, thresh)
 
         # learner part
         if(learner in 'dt'):
             # id3 decision tree, may need full instance counts (not weights)
-            print 'add in dt code'
+            dataset = []
+
+            for i in xrange(len(L)):
+                pos = int(Pu[i][0]*100) # add frac of 100 positive instances
+                neg = 100 - pos
+                posinstance = L[i]
+                neginstance = L[i]
+                posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
+                neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
+                for i in xrange(pos):
+                    dataset.append(posinstance)
+                for i in xrange(neg):
+                    dataset.append(neginstance)
+
+            for i in xrange(len(U)):
+                pos = int(Pu[i + len(L)][0]*100) # add frac of 100 positive instances
+                neg = 100 - pos
+                posinstance = U[i]
+                neginstance = U[i]
+                posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
+                neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
+                for i in xrange(pos):
+                    dataset.append(posinstance)
+                for i in xrange(neg):
+                    dataset.append(neginstance)
+
+            print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+
+            tree = id3(attributes[:len(attributes)-1], dataset)
+            tree.maketree()
+            Hs.append(tree)
+            print "\nGenerated ID3 Tree: " + tree.display()
+
             # add model to Hs list
         elif(learner in 'bayes'):
             # naive bayes
             print 'add in bayes code'
             # add model to Hs list
 
-        
+        # compute new weights
+        Wl = []
+        Wu = []
+
+        for l in L:
+            predY = predict(l[0], learner)
+            
 
 
 
 
 
 
-L=[[{1:1},-1.0],[{1:0},-1.0],[{1:2},1.0],[{1:3},1.0]]
-U=[[{1:1.5},None]]
-Wl=[.6,.2,.1,.1]
-Wu=[1]
-Ys=[-1.0,1.0]
+#L=[[{1:1},-1.0],[{1:0},-1.0],[{1:2},1.0],[{1:3},1.0]]
+#U=[[{1:1.5},None]]
+#Wl=[.6,.2,.1,.1]
+#Wu=[1]
+#Ys=[-1.0,1.0]
 
 
-x=EM(L,U,Wl,Wu,Ys,-1,.0001)
-print x,"!"
+#x=EM(L,U,Wl,Wu,Ys,-1,.0001)
+#print x,"!"
 
 if __name__ == "__main__":
     main()
