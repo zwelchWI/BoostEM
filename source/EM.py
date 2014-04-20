@@ -301,6 +301,8 @@ def main():
     for i in xrange(len(U)):
         Wu.append(1)
 
+    instanceMultiplier = 10
+
     # da boost loop
     for t in xrange(tboost):
         print "boost cycle", t
@@ -313,32 +315,29 @@ def main():
             dataset = []
 
             for i in xrange(len(L)):
-                pos = int(Pu[i][0]*100) # add frac of 100 positive instances
-                neg = 100 - pos
-                posinstance = L[i]
-                neginstance = L[i]
-                posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
-                neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
-                for i in xrange(pos):
-                    dataset.append(posinstance)
-                for i in xrange(neg):
-                    dataset.append(neginstance)
+                print i, len(Pu), len(L)
+                instance = L[i][0]
+                instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
+
+                # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
+                for j in xrange(instanceMultiplier):
+                    dataset.append(instance)
 
             for i in xrange(len(U)):
-                pos = int(Pu[i + len(L)][0]*100) # add frac of 100 positive instances
-                neg = 100 - pos
-                posinstance = U[i]
-                neginstance = U[i]
+                pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
+                neg = instanceMultiplier - pos
+                posinstance = U[i][0]
+                neginstance = U[i][0]
                 posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
                 neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
-                for i in xrange(pos):
+                for j in xrange(pos):
                     dataset.append(posinstance)
-                for i in xrange(neg):
+                for j in xrange(neg):
                     dataset.append(neginstance)
 
             print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
 
-            tree = id3(attributes[:len(attributes)-1], dataset)
+            tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=2)
             tree.maketree()
             Hs.append(tree)
             print "\nGenerated ID3 Tree: " + tree.display()

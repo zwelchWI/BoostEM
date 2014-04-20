@@ -5,7 +5,7 @@ import random
 class id3:
 	""" id3 decision tree node """
 
-	def __init__(self,attributes,dataset):
+	def __init__(self,attributes,dataset,allattributes,m=2):
 		self.attributes = attributes
 		self.dataset = dataset
 		self.children = []
@@ -13,6 +13,8 @@ class id3:
 		self.splitval = -9000 # value of split for numeric attributes
 		self.splitindex = -1 # index in sorted dataset to divide data by the splitval
 		self.classification = None # this will have a value from the attribute "class" if this is a leaf node
+		self.allattributes = allattributes
+		self.m = m
 
 	def display(self,level=0):
 		s = ""
@@ -44,7 +46,7 @@ class id3:
 		negatives = 0
 		for datapoint in self.dataset:
 			if datapoint[attributename] == attributevalue:
-				if datapoint["class"] == attributes[-1][1][0]:
+				if datapoint["class"] == self.allattributes[-1][1][0]:
 					negatives += 1
 				else:
 					positives += 1
@@ -56,14 +58,14 @@ class id3:
 		if lower:
 			for datapoint in self.dataset:
 				if datapoint[attributename] <= attributesplitpoint:
-					if datapoint["class"] == attributes[-1][1][0]:
+					if datapoint["class"] == self.allattributes[-1][1][0]:
 						negatives += 1
 					else:
 						positives += 1
 		else:
 			for datapoint in self.dataset:
 				if datapoint[attributename] > attributesplitpoint:
-					if datapoint["class"] == attributes[-1][1][0]:
+					if datapoint["class"] == self.allattributes[-1][1][0]:
 						negatives += 1
 					else:
 						positives += 1
@@ -94,14 +96,14 @@ class id3:
 	def maxinfogain(self):
 		""" given this node's data and list of attributes, return
 			the attribute with the greatest info gain """
-		maxattr = attributes[0]
+		maxattr = self.allattributes[0]
 		maxgain = -9000
 		splitval = -9000
 		splitindex = -1
 
-		myentropy = getentropy(self.dataset)
+		myentropy = getentropy(self.dataset, self.allattributes)
 
-		for attr in attributes:
+		for attr in self.allattributes:
 			thisgain = -9000
 			# if this attribute's name is in this node's attributes (aka hasn't been split on before)
 			if attr in self.attributes:
@@ -131,8 +133,8 @@ class id3:
 							set2 = sorteddata[i+1:]
 
 							realvaluemaxgain = myentropy
-							realvaluemaxgain -= (len(set1) / float(len(self.dataset))) * getentropy(set1)
-							realvaluemaxgain -= (len(set2) / float(len(self.dataset))) * getentropy(set2)
+							realvaluemaxgain -= (len(set1) / float(len(self.dataset))) * getentropy(set1,self.allattributes)
+							realvaluemaxgain -= (len(set2) / float(len(self.dataset))) * getentropy(set2,self.allattributes)
 						# see if it's the best of this attr
 						if realvaluemaxgain > thisgain:
 							thisgain = realvaluemaxgain
@@ -156,16 +158,16 @@ class id3:
 		# simple majority rules
 		positives = 0
 		negatives = 0
-		key = attributes[len(attributes)-1][1][0] # get a positive or negative name of the class
+		key = self.allattributes[-1][1][0] # get a positive or negative name of the class
 		for data in self.dataset:
 			if key in data["class"]:
 				positives+=1
 			else:
 				negatives+=1
 		if negatives > positives:
-			self.classification = attributes[len(attributes)-1][1][1]
+			self.classification = self.allattributes[-1][1][1]
 		else:
-			self.classification = attributes[len(attributes)-1][1][0]
+			self.classification = self.allattributes[-1][1][0]
 
 	def maketree(self):
 		# check to see if we should be a leaf
@@ -187,7 +189,7 @@ class id3:
 			return
 
 		# 2) we have less than m instances
-		if len(self.dataset) < m:
+		if len(self.dataset) < self.m:
 			self.makeleaf()
 			return
 
@@ -232,11 +234,11 @@ class id3:
 			set1 = sorteddata[:self.splitindex]
 			set2 = sorteddata[self.splitindex:]
 			
-			kid = id3(newattributes, set1)
+			kid = id3(newattributes, set1, self.allattributes)
 			kid.maketree()
 			self.children.append(kid)
 			
-			kid = id3(newattributes, set2)
+			kid = id3(newattributes, set2, self.allattributes)
 			kid.maketree()
 			self.children.append(kid)
 
@@ -284,11 +286,11 @@ def readtrainingfile(trainfile):
 	f.close()
 	return (attributes,dataset)
 
-def getentropy(dataset):
+def getentropy(dataset,allattributes):
 	""" pass in a dataset (dictionary in form {attribute: value}) """
 	positives = 0
 	negatives = 0
-	key = attributes[len(attributes)-1][1][0] # get a positive or negative name of the class
+	key = allattributes[-1][1][0] # get a positive or negative name of the class
 	for data in dataset:
 		if key in data["class"]:
 			positives+=1
@@ -339,7 +341,7 @@ if __name__ == "__main__":
 
 	(attributes, dataset) = readtrainingfile(train)
 
-	tree = id3(attributes[:len(attributes)-1], dataset)
+	tree = id3(attributes[:len(attributes)-1], dataset, attributes, m)
 
 	tree.maketree()
 
