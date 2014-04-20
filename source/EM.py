@@ -6,7 +6,12 @@ from dtLearn import id3
 
 
 def Normal(Mu,Sigma,x):
-    return math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*np.linalg.det(Sigma))    
+    try:
+        val= math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*np.linalg.det(Sigma))    
+    except np.linalg.linalg.LinAlgError:
+        print 'Warning, singular matrix'
+        val =0.0
+    return val
 
 def log2(val):
     if val == 0.0:
@@ -29,20 +34,24 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     Mus    = []
     Sigmas = []
     for yNdx in range(len(Ys)):
-        effW = Ycounts[yNdx]/Wlcounts[yNdx]
+        effW = 0.0
+        if Wlcounts[yNdx]:
+            effW = Ycounts[yNdx]/Wlcounts[yNdx]
         Mu = np.mat(np.zeros(len(L[0][0].keys())))
         Sigma=np.mat(np.zeros([len(L[0][0].keys()),len(L[0][0].keys())]))
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:
                 X = np.matrix(L[lNdx][0].values())       
                 Mu = Mu + Wl[lNdx]*effW*X
-        Mu = Mu/Ycounts[yNdx]
+        if Ycounts[yNdx]:
+            Mu = Mu/Ycounts[yNdx]
 
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:        
                 X = np.matrix(L[lNdx][0].values())       
                 Sigma = Sigma + (Wl[lNdx]*effW*X-Mu).T*(Wl[lNdx]*effW*X-Mu)
-        Sigma = Sigma/Ycounts[yNdx]
+        if Ycounts[yNdx]:
+            Sigma = Sigma/Ycounts[yNdx]
 
         Mus.append(Mu)
         Sigmas.append(Sigma)
@@ -69,7 +78,9 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
         #M step
         Ljs = []
         for yNdx in range(len(Ys)):
-            effW = Ycounts[yNdx]/Wlcounts[yNdx]
+            effW = 0.0
+            if Wlcounts[yNdx]:
+                effW = Ycounts[yNdx]/Wlcounts[yNdx]
             Lj = Ycounts[yNdx]
             for uNdx in range(len(U)):
                 Lj = Lj + gammas[uNdx,yNdx]
@@ -82,8 +93,8 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             for uNdx in range(len(U)):
                 X = np.matrix(U[uNdx][0].values())       
                 Mu = Mu + gammas[uNdx,yNdx]*(Wu[uNdx]*len(U))*X
-
-            Mu = Mu/Lj
+            if Lj:   
+                Mu = Mu/Lj
 
             Sigma=np.mat(np.zeros([len(L[0][0].keys()),len(L[0][0].keys())]))
             for lNdx in range(len(L)):
@@ -94,7 +105,8 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             for uNdx in range(len(U)):
                 X = np.matrix(U[uNdx][0].values())       
                 Sigma = Sigma + gammas[uNdx,yNdx]*(len(U)*Wu[uNdx]*X-Mu).T*(len(U)*Wu[uNdx]*X-Mu)
-            Sigma = Sigma/Lj
+            if Lj:
+                Sigma = Sigma/Lj
 
             Pi[yNdx] = Lj/float(len(L) + len(U))
             Sigmas[yNdx] = Sigma
