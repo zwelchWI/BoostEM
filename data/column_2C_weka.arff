@@ -1,13 +1,12 @@
 @relation column_2C_weka
 
-@attribute pelvic_incidence numeric
-@attribute pelvic_tilt numeric
-@attribute lumbar_lordosis_angle numeric
-@attribute sacral_slope numeric
-@attribute pelvic_radius numeric
-@attribute degree_spondylolisthesis numeric
-
-@attribute class {Abnormal, Normal}
+@attribute 'pelvic_incidence' {numeric}
+@attribute 'pelvic_tilt' numeric
+@attribute 'lumbar_lordosis_angle' numeric
+@attribute 'sacral_slope' numeric
+@attribute 'pelvic_radius' numeric
+@attribute 'degree_spondylolisthesis' numeric
+@attribute 'class' {Abnormal,Normal}
 
 @data
 63.0278175,22.55258597,39.60911701,40.47523153,98.67291675,-0.254399986,Abnormal

@@ -3,11 +3,11 @@ import numpy as np
 import math
 import getopt
 from dtLearn import id3
-
+import copy
 
 def Normal(Mu,Sigma,x):
     try:
-        val= math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*np.linalg.det(Sigma))    
+        val= math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
     except np.linalg.linalg.LinAlgError:
         print 'Warning, singular matrix'
         val =0.0
@@ -22,7 +22,6 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     #L and U are lists of tuples L being labeled data and U being unlabeled data.
     #maxIter is the maximum number of iterations, -1 means dont stop
     #threshold is the log linear threshold difference at which to stop
-    
     
     #Init using only labeled data
     Ycounts  = [0.0,0.0]
@@ -42,7 +41,7 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:
                 X = np.matrix(L[lNdx][0].values())       
-                Mu = Mu + Wl[lNdx]*effW*X
+                Mu = Mu + (Wl[lNdx]*effW)*X
         if Ycounts[yNdx]:
             Mu = Mu/Ycounts[yNdx]
 
@@ -131,7 +130,6 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             oldVal = newVal
             newVal= logLike
             diff = newVal-oldVal
-            print diff
         
         if maxIter>0:
             ndx=ndx+1
@@ -155,7 +153,7 @@ def info():
     ------------------------------------------------------------------
     """    
 
-def readInputFile(fileName, labeledSize):
+def readInputFile(fileName, labeledSize,testFrac,labelFrac):
     f = open(fileName)
 
     # clear the relation line
@@ -183,38 +181,51 @@ def readInputFile(fileName, labeledSize):
         line = line.replace("{", "")
         line = line.replace("}", "")
         line = line.split("'")
-
+        print line
         attr = line[1]
         vals = line[2]
         vals = vals.split(",")
         attributes.append((attr, vals))
     
     Ys = vals
-
     count = 0
-
+    TotalData = []
     # now get the dataset
     for line in f:
         dict = {}
-        data = line.strip().replace(" ", "").split(",")
+        data = line.lower().strip().replace(" ", "").split(",")
         for i in xrange(len(attributes) - 1):
             if len(attributes[i][1]) == 1:
                 # real valued- data
                 dict[attributes[i][0]] = float(data[i])
             else:
                 dict[attributes[i][0]] = data[i]
-        if count < labeledSize:
+        TotalData.append((dict, data[len(attributes) - 1]))
+    #    if count < labeledSize:
             # add the tuple of feature dictionary, labeled class value
-            L.append((dict, data[len(attributes) - 1])) 
-        else:
+     #       L.append((dict, data[len(attributes) - 1])) 
+      #  else:
             # add the tuple of feature dictionary, None
-            U.append((dict, None))
+       #     U.append((dict, None))
         count += 1
+
+    Test=[]
+    Train=[]
+    for datum in TotalData:
+        if np.random.random() < testFrac:
+            Test.append(datum)
+        else:
+            Train.append(datum)
+    for datum in Train:
+        if np.random.random() < labelFrac:
+            L.append(datum)
+        else:
+            U.append((datum[0],None))    
 
     f.close()
     print "attributes:", len(attributes), "  labeled:", len(L), "  unlabeled:", len(U)
     print "class values:", Ys[0], Ys[1]
-    return (attributes, L, U, Ys)
+    return (attributes, L, U, Ys,Test)
 
 def normalize(Wl, Wu):
     lSum = 0
@@ -239,7 +250,7 @@ def normalize(Wl, Wu):
 def main():
     try:
         options, remainder = getopt.getopt(sys.argv[1:], 'h', ["help", "input=", 
-            "size=", "thresh=", "maxiter=", "tboost=", "learner="])
+            "size=", "thresh=", "maxiter=", "tboost=", "learner=","dtM=","seed=","testFrac=","labelFrac="])
     except getopt.GetoptError, e:
         print str(e)
         info()
@@ -252,7 +263,10 @@ def main():
     tboost = 200
     classifiers = ['bayes']
     learner = ""
-
+    testFrac  = .1
+    labelFrac = .1
+    seed = None
+    dtM = 100
     for o, a in options:
         if o in ("-h", "--help"):
             info()
@@ -269,40 +283,45 @@ def main():
             tboost = int(a)
         elif o in ("--learner"):
             learner = a
+        elif o in ("--seed"):
+            seed = int(a)
+        elif o in ("--testFrac"):
+            testFrac = float(a) 
+        elif o in ("--labelFrac"):
+            labelFrac = float(a)
+        elif o in ("--dtM"):
+            dtM = int(a)
         else:
             print "unknown option: " + o
             info()
             sys.exit(2)
-
+    np.random.seed(seed)   
 
     if not inputArff:
         print "\ninput file needed. (use --input=)"
         sys.exit(2)
 
-    if labeledSize < 1:
-        print "\nsize argument needed. (use --size)"
-        sys.exit(2)
     if not learner:
         print "\nlearner needed. (use --learner=)"
         sys.exit(2)
 
-    (attributes, L, U, Ys) = readInputFile(inputArff, labeledSize)
-
+    (attributes, L, U, Ys,Test) = readInputFile(inputArff, labeledSize,testFrac,labelFrac)
+    #U = []
     print "we are ready for the boosting, captain"
     # do boost stuff now
     Wl = []
     Wu = []
 
     Hs = []
-
+    betas = []
     for i in xrange(len(L)):
         Wl.append(1)
 
     for i in xrange(len(U)):
         Wu.append(1)
 
-    instanceMultiplier = 10
-
+    instanceMultiplier = 100
+    
     # da boost loop
     for t in xrange(tboost):
         print "boost cycle", t
@@ -315,7 +334,7 @@ def main():
             dataset = []
 
             for i in xrange(len(L)):
-                instance = L[i][0]
+                instance = copy.deepcopy(L[i][0])
                 instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
 
                 # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
@@ -325,8 +344,8 @@ def main():
             for i in xrange(len(U)):
                 pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
                 neg = instanceMultiplier - pos
-                posinstance = U[i][0]
-                neginstance = U[i][0]
+                posinstance = copy.deepcopy(U[i][0])
+                neginstance = copy.deepcopy(U[i][0])
                 posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
                 neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
                 for j in xrange(pos):
@@ -336,7 +355,7 @@ def main():
 
             print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
 
-            tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=100.0)
+            tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
             tree.maketree()
             Hs.append(tree)
             print "\nGenerated ID3 Tree: " + tree.display()
@@ -364,14 +383,28 @@ def main():
         for i in xrange(len(U)):
             if learner in 'dt':
                 # TODO ::: how to decide error for our unlabeled instances?
-                eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(L[i][0]))])
-                eps += 0.0
+                eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
             elif learner in 'bayes':
                 print 'todo'
-
+        eps /= 2.0 #WE THINK THIS SHOULD HAPPEN BECAUSE THERE ARE 2 EPSILONS
         beta = eps / (1.0 - eps)
         print "epsilon:", eps, "  beta:", beta
+        if eps >=0.5:
+            print "STOPING BECAUSE EPS BAD"
+            Hs = Hs[:-1]
+        betas.append(beta)
 
+        numCorrect=0.0
+        for datum in Test:
+            actual = datum[1]
+            predicted = Hs[-1].classify(datum[0])
+                #print actual, predicted
+
+            if actual == predicted:
+                numCorrect+=1
+
+        print "H accuracy : "+str(numCorrect/len(Test))
+            
 
 
         # compute new weights
@@ -390,13 +423,29 @@ def main():
         for i in xrange(len(U)):
             if learner in 'dt':
                 # TODO ::: how to reweight our unlabeled instances?
-                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(L[i][0]))])
+                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
             elif learner in 'bayes':
                 print 'todo'
 
 
+    
 
+    numCorrect=0.0
+    for datum in Test:
+        yVals = []
+        for yNdx in range(len(Ys)):
+            yVal = 0.0
+            for hNdx in range(len(Hs)):
+                if Ys[yNdx] == Hs[hNdx].classify(datum[0]):
+                    yVal += math.log(1/betas[hNdx])                 
+            yVals.append(yVal)
+        actual = datum[1]
+        predicted = Ys[yVals.index(max(yVals))]
+                #print actual, predicted
+        if actual == predicted:
+            numCorrect+=1
 
+    print "Total accuracy : "+str(numCorrect/len(Test))
 
 
 #L=[[{1:1},-1.0],[{1:0},-1.0],[{1:2},1.0],[{1:3},1.0]]
