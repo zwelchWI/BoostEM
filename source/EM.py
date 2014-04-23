@@ -24,6 +24,10 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     #threshold is the log linear threshold difference at which to stop
     
     #Init using only labeled data
+
+    if len(U) == 0:
+        return []
+
     Ycounts  = [0.0,0.0]
     Wlcounts = [0.0,0.0]
     for l in L:
@@ -151,6 +155,13 @@ def info():
     -maxiter =              max iterations for EM
     -tboost =               number of iterations for boost
     -learner                classifier to use
+    --dtM=		    Decision Tree cutoff
+    --seed=                 random number seed
+    --testFrac=             Fraction of dataset to be test in Test|Train split
+    --labelFrac=            Fraction of trained data to be used as labeled data(rest unlabeled
+    --verbose               Print more stuff
+    --loseUnlabeled         Lose the unlabeled data
+
     ------------------------------------------------------------------
     """    
 
@@ -250,7 +261,8 @@ def normalize(Wl, Wu):
 def main():
     try:
         options, remainder = getopt.getopt(sys.argv[1:], 'h', ["help", "input=", 
-            "size=", "thresh=", "maxiter=", "tboost=", "learner=","dtM=","seed=","testFrac=","labelFrac=","verbose"])
+            "size=", "thresh=", "maxiter=", "tboost=", "learner=","dtM=","seed=",
+            "testFrac=","labelFrac=","verbose","loseUnlabeled"])
     except getopt.GetoptError, e:
         print str(e)
         info()
@@ -268,6 +280,7 @@ def main():
     seed = None
     dtM = 100
     verbose = False
+    keepUnlabeled=True
     for o, a in options:
         if o in ("-h", "--help"):
             info()
@@ -294,6 +307,8 @@ def main():
             dtM = int(a)
         elif o in ("--verbose"):
             verbose=True
+        elif o in ("--loseUnlabeled"):
+            keepUnlabeled=False
         else:
             print "unknown option: " + o
             info()
@@ -309,7 +324,9 @@ def main():
         sys.exit(2)
 
     (attributes, L, U, Ys,Test) = readInputFile(inputArff, labeledSize,testFrac,labelFrac)
-    #U = []
+
+    if not keepUnlabeled:
+        U = []
     print "we are ready for the boosting, captain"
     # do boost stuff now
     Wl = []
@@ -457,7 +474,7 @@ def main():
         if actual == predicted:
             numCorrect+=1
 
-    print "Total accuracy : "+str(numCorrect/len(Test))
+    print "\nTotal accuracy : "+str(numCorrect/len(Test))
 
 
 #L=[[{1:1},-1.0],[{1:0},-1.0],[{1:2},1.0],[{1:3},1.0]]
