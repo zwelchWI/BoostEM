@@ -73,7 +73,8 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
                 gammas[uNdx,yNdx] = Pi[yNdx]*Normal(Mus[yNdx],Sigmas[yNdx],U[uNdx][0].values())
             denom = gammas[uNdx,0]+ gammas[uNdx,1]
             for yNdx in range(len(Ys)):
-                gammas[uNdx,yNdx] = gammas[uNdx,yNdx]/(denom) 
+                if denom > 0:
+                    gammas[uNdx,yNdx] = gammas[uNdx,yNdx]/(denom) 
         #M step
         Ljs = []
         for yNdx in range(len(Ys)):
@@ -181,7 +182,6 @@ def readInputFile(fileName, labeledSize,testFrac,labelFrac):
         line = line.replace("{", "")
         line = line.replace("}", "")
         line = line.split("'")
-        print line
         attr = line[1]
         vals = line[2]
         vals = vals.split(",")
@@ -250,7 +250,7 @@ def normalize(Wl, Wu):
 def main():
     try:
         options, remainder = getopt.getopt(sys.argv[1:], 'h', ["help", "input=", 
-            "size=", "thresh=", "maxiter=", "tboost=", "learner=","dtM=","seed=","testFrac=","labelFrac="])
+            "size=", "thresh=", "maxiter=", "tboost=", "learner=","dtM=","seed=","testFrac=","labelFrac=","verbose"])
     except getopt.GetoptError, e:
         print str(e)
         info()
@@ -267,6 +267,7 @@ def main():
     labelFrac = .1
     seed = None
     dtM = 100
+    verbose = False
     for o, a in options:
         if o in ("-h", "--help"):
             info()
@@ -291,6 +292,8 @@ def main():
             labelFrac = float(a)
         elif o in ("--dtM"):
             dtM = int(a)
+        elif o in ("--verbose"):
+            verbose=True
         else:
             print "unknown option: " + o
             info()
@@ -320,14 +323,15 @@ def main():
     for i in xrange(len(U)):
         Wu.append(1)
 
-    instanceMultiplier = 100
+    instanceMultiplier = 10
     
     # da boost loop
     for t in xrange(tboost):
-        print "boost cycle", t
+        print "boost cycle", t,"/",tboost,
         (Wl, Wu) = normalize(Wl, Wu)
         Pu = EM(L, U, Wl, Wu, Ys, maxIter, thresh)
-
+        if verbose:
+            print "EM'd them instances"
         # learner part
         if learner in 'dt':
             # id3 decision tree, may need full instance counts (not weights)
@@ -352,13 +356,14 @@ def main():
                     dataset.append(posinstance)
                 for j in xrange(neg):
                     dataset.append(neginstance)
-
-            print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+            if verbose:
+                print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
 
             tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
             tree.maketree()
             Hs.append(tree)
-            print "\nGenerated ID3 Tree: " + tree.display()
+            if verbose:
+                print "\nGenerated ID3 Tree: " + tree.display()
 
         elif learner in 'bayes':
             # naive bayes
@@ -388,11 +393,7 @@ def main():
                 print 'todo'
         eps /= 2.0 #WE THINK THIS SHOULD HAPPEN BECAUSE THERE ARE 2 EPSILONS
         beta = eps / (1.0 - eps)
-        print "epsilon:", eps, "  beta:", beta
-        if eps >=0.5:
-            print "STOPING BECAUSE EPS BAD"
-            Hs = Hs[:-1]
-        betas.append(beta)
+        print "| epsilon:", eps, "|  beta:", beta,
 
         numCorrect=0.0
         for datum in Test:
@@ -403,8 +404,19 @@ def main():
             if actual == predicted:
                 numCorrect+=1
 
-        print "H accuracy : "+str(numCorrect/len(Test))
+        print "| H accuracy : "+str(numCorrect/len(Test)),
             
+        if verbose:
+            print ""
+        else:
+            print "      \t\t\r",
+        sys.stdout.flush()
+
+        if eps >=0.5:
+            print "\nSTOPING BECAUSE EPS BAD"
+            Hs = Hs[:-1]
+            break
+        betas.append(beta)
 
 
         # compute new weights
