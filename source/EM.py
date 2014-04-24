@@ -7,7 +7,15 @@ import copy
 
 def Normal(Mu,Sigma,x):
     try:
-        val= math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
+      #  print x-Mu
+      #  print Sigma.I
+      #  print -.5*(x-Mu)*Sigma.I*(x-Mu).T
+      #  print math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)
+
+      #  print len(x)
+      #  print math.fabs(np.linalg.det(Sigma))
+      #  print math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))
+        val= math.exp(-math.fabs(5*(x-Mu)*Sigma.I*(x-Mu).T))/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
     except np.linalg.linalg.LinAlgError:
         print 'Warning, singular matrix'
         val =0.0
@@ -165,7 +173,7 @@ def info():
     ------------------------------------------------------------------
     """    
 
-def readInputFile(fileName, labeledSize,testFrac,labelFrac):
+def readInputFile(fileName, labeledSize,numFolds,labelFrac):
     f = open(fileName)
 
     # clear the relation line
@@ -220,23 +228,25 @@ def readInputFile(fileName, labeledSize,testFrac,labelFrac):
        #     U.append((dict, None))
         count += 1
 
-    Test=[]
-    Train=[]
+    folds = [ [] for ndx in range(numFolds)]
+    #Test=[]
+    #Train=[]
     for datum in TotalData:
-        if np.random.random() < testFrac:
-            Test.append(datum)
-        else:
-            Train.append(datum)
-    for datum in Train:
-        if np.random.random() < labelFrac:
-            L.append(datum)
-        else:
-            U.append((datum[0],None))    
+        folds[np.random.randint(0,numFolds)].append(datum)
+    #    if np.random.random() < testFrac:
+     #       Test.append(datum)
+      #  else:
+       #     Train.append(datum)
+    #for datum in Train:
+    #    if np.random.random() < labelFrac:
+     #       L.append(datum)
+     #   else:
+     #       U.append((datum[0],None))    
 
     f.close()
-    print "attributes:", len(attributes), "  labeled:", len(L), "  unlabeled:", len(U)
+    #print "attributes:", len(attributes), "  labeled:", len(L), "  unlabeled:", len(U)
     print "class values:", Ys[0], Ys[1]
-    return (attributes, L, U, Ys,Test)
+    return (attributes, folds, Ys)
 
 def normalize(Wl, Wu):
     lSum = 0
@@ -253,8 +263,10 @@ def normalize(Wl, Wu):
     for weight in Wl:
         nWl.append(float(weight)/lSum)
     for weight in Wu:
-        nWu.append(float(weight)/uSum)
-
+        if uSum:
+            nWu.append(float(weight)/uSum)
+        else:
+            nWu.append(0)
     return (nWl, nWu)
 
 
@@ -262,7 +274,7 @@ def main():
     try:
         options, remainder = getopt.getopt(sys.argv[1:], 'h', ["help", "input=", 
             "size=", "thresh=", "maxiter=", "tboost=", "learner=","dtM=","seed=",
-            "testFrac=","labelFrac=","verbose","loseUnlabeled"])
+            "numFolds=","labelFrac=","verbose","loseUnlabeled"])
     except getopt.GetoptError, e:
         print str(e)
         info()
@@ -275,7 +287,7 @@ def main():
     tboost = 200
     classifiers = ['bayes']
     learner = ""
-    testFrac  = .1
+    numFolds=10
     labelFrac = .1
     seed = None
     dtM = 100
@@ -299,8 +311,8 @@ def main():
             learner = a
         elif o in ("--seed"):
             seed = int(a)
-        elif o in ("--testFrac"):
-            testFrac = float(a) 
+        elif o in ("--numFolds"):
+            testFrac = int(a) 
         elif o in ("--labelFrac"):
             labelFrac = float(a)
         elif o in ("--dtM"):
@@ -323,159 +335,180 @@ def main():
         print "\nlearner needed. (use --learner=)"
         sys.exit(2)
 
-    (attributes, L, U, Ys,Test) = readInputFile(inputArff, labeledSize,testFrac,labelFrac)
+    (attributes,folds, Ys) = readInputFile(inputArff, labeledSize,numFolds,labelFrac)
 
-    if not keepUnlabeled:
-        U = []
+    finalPredictions=[]
     print "we are ready for the boosting, captain"
-    # do boost stuff now
-    Wl = []
-    Wu = []
+    for foldNdx in range(len(folds)):
+        Test = folds[foldNdx]
+        Trains= folds[:foldNdx]+folds[(foldNdx+1):]
+        Train=[]
+        for train in Trains:
+            Train += train
 
-    Hs = []
-    betas = []
-    for i in xrange(len(L)):
-        Wl.append(1)
+        L=[]
+        U=[]
+        for datum in Train:
+            if np.random.random() < labelFrac:
+                L.append(datum)
+            else:
+                U.append((datum[0],None))    
 
-    for i in xrange(len(U)):
-        Wu.append(1)
+        if not keepUnlabeled:
+            U = []
 
-    instanceMultiplier = 10
-    
-    # da boost loop
-    for t in xrange(tboost):
-        print "boost cycle", t,"/",tboost,
-        (Wl, Wu) = normalize(Wl, Wu)
-        Pu = EM(L, U, Wl, Wu, Ys, maxIter, thresh)
-        if verbose:
-            print "EM'd them instances"
-        # learner part
-        if learner in 'dt':
-            # id3 decision tree, may need full instance counts (not weights)
-            dataset = []
+        # do boost stuff now
+        Wl = []
+        Wu = []
 
-            for i in xrange(len(L)):
-                instance = copy.deepcopy(L[i][0])
-                instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
-
-                # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
-                for j in xrange(instanceMultiplier):
-                    dataset.append(instance)
-
-            for i in xrange(len(U)):
-                pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
-                neg = instanceMultiplier - pos
-                posinstance = copy.deepcopy(U[i][0])
-                neginstance = copy.deepcopy(U[i][0])
-                posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
-                neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
-                for j in xrange(pos):
-                    dataset.append(posinstance)
-                for j in xrange(neg):
-                    dataset.append(neginstance)
-            if verbose:
-                print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
-
-            tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
-            tree.maketree()
-            Hs.append(tree)
-            if verbose:
-                print "\nGenerated ID3 Tree: " + tree.display()
-
-        elif learner in 'bayes':
-            # naive bayes
-            print 'add in bayes code'
-            # add model to Hs list
-
-        # compute error value
-        eps = 0.0
-
+        Hs = []
+        betas = []
         for i in xrange(len(L)):
-            if learner in 'dt':
-                actual = L[i][1]
-                predicted = Hs[-1].classify(L[i][0])
-                #print actual, predicted
-
-                if actual != predicted:
-                    eps += Wl[i]
-
-            elif learner in 'bayes':
-                print 'todo'
+            Wl.append(1)
 
         for i in xrange(len(U)):
+            Wu.append(1)
+
+        instanceMultiplier = 10
+        
+        # da boost loop
+        for t in xrange(tboost):
+            print "boost cycle", t+1,"/",tboost,
+            (Wl, Wu) = normalize(Wl, Wu)
+            Pu = EM(L, U, Wl, Wu, Ys, maxIter, thresh)
+            if verbose:
+                print "EM'd them instances"
+            # learner part
             if learner in 'dt':
-                # TODO ::: how to decide error for our unlabeled instances?
-                eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
+                # id3 decision tree, may need full instance counts (not weights)
+                dataset = []
+
+                for i in xrange(len(L)):
+                    instance = copy.deepcopy(L[i][0])
+                    instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
+
+                    # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
+                    for j in xrange(instanceMultiplier):
+                        dataset.append(instance)
+
+                for i in xrange(len(U)):
+                    pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
+                    neg = instanceMultiplier - pos
+                    posinstance = copy.deepcopy(U[i][0])
+                    neginstance = copy.deepcopy(U[i][0])
+                    posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
+                    neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
+                    for j in xrange(pos):
+                        dataset.append(posinstance)
+                    for j in xrange(neg):
+                        dataset.append(neginstance)
+                if verbose:
+                    print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+
+                tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
+                tree.maketree()
+                Hs.append(tree)
+                if verbose:
+                    print "\nGenerated ID3 Tree: " + tree.display()
+
             elif learner in 'bayes':
-                print 'todo'
-        eps /= 2.0 #WE THINK THIS SHOULD HAPPEN BECAUSE THERE ARE 2 EPSILONS
-        beta = eps / (1.0 - eps)
-        print "| epsilon:", eps, "|  beta:", beta,
+                # naive bayes
+                print 'add in bayes code'
+                # add model to Hs list
+
+            # compute error value
+            eps = 0.0
+
+            for i in xrange(len(L)):
+                if learner in 'dt':
+                    actual = L[i][1]
+                    predicted = Hs[-1].classify(L[i][0])
+                    #print actual, predicted
+
+                    if actual != predicted:
+                        eps += Wl[i]
+
+                elif learner in 'bayes':
+                    print 'todo'
+
+            for i in xrange(len(U)):
+                if learner in 'dt':
+                    # TODO ::: how to decide error for our unlabeled instances?
+                    eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
+                elif learner in 'bayes':
+                    print 'todo'
+            if len(U):
+                eps /= 2.0 #WE THINK THIS SHOULD HAPPEN BECAUSE THERE ARE 2 EPSILONS
+            beta = eps / (1.0 - eps)
+            print "| epsilon:", eps, "|  beta:", beta,
+
+            numCorrect=0.0
+            for datum in Test:
+                actual = datum[1]
+                predicted = Hs[-1].classify(datum[0])
+                    #print actual, predicted
+
+                if actual == predicted:
+                    numCorrect+=1
+
+            print "| H accuracy : "+str(numCorrect/len(Test)),
+                
+          
+            if eps >=0.5:
+                print "\nSTOPING BECAUSE EPS BAD"
+                Hs = Hs[:-1]
+                break
+            betas.append(beta)
+
+
+            # compute new weights
+            # downweight correct examples
+            for i in xrange(len(L)):
+                if learner in 'dt':
+                    actual = L[i][1]
+                    predicted = Hs[-1].classify(L[i][0])
+
+                    if actual == predicted:
+                        Wl[i] *= beta
+
+                elif learner in 'bayes':
+                    print 'todo'
+
+            for i in xrange(len(U)):
+                if learner in 'dt':
+                    # TODO ::: how to reweight our unlabeled instances?
+                    Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
+                elif learner in 'bayes':
+                    print 'todo'
+
+            if verbose:
+                print ""
+            else:
+                print "      \t\t\r",
+            sys.stdout.flush()
+        
 
         numCorrect=0.0
         for datum in Test:
+            yVals = []
+            for yNdx in range(len(Ys)):
+                yVal = 0.0
+                for hNdx in range(len(Hs)):
+                    if Ys[yNdx] == Hs[hNdx].classify(datum[0]):
+                        yVal += math.log(1/betas[hNdx])                 
+                yVals.append(yVal)
             actual = datum[1]
-            predicted = Hs[-1].classify(datum[0])
-                #print actual, predicted
-
+            predicted = Ys[yVals.index(max(yVals))]
+                    #print actual, predicted
             if actual == predicted:
                 numCorrect+=1
-
-        print "| H accuracy : "+str(numCorrect/len(Test)),
-            
-        if verbose:
-            print ""
-        else:
-            print "      \t\t\r",
-        sys.stdout.flush()
-
-        if eps >=0.5:
-            print "\nSTOPING BECAUSE EPS BAD"
-            Hs = Hs[:-1]
-            break
-        betas.append(beta)
+     
 
 
-        # compute new weights
-        # downweight correct examples
-        for i in xrange(len(L)):
-            if learner in 'dt':
-                actual = L[i][1]
-                predicted = Hs[-1].classify(L[i][0])
+        print "Total accuracy : "+str(numCorrect/len(Test))+'                                                          '
+        finalPredictions.append(numCorrect/len(Test))
 
-                if actual == predicted:
-                    Wl[i] *= beta
-
-            elif learner in 'bayes':
-                print 'todo'
-
-        for i in xrange(len(U)):
-            if learner in 'dt':
-                # TODO ::: how to reweight our unlabeled instances?
-                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
-            elif learner in 'bayes':
-                print 'todo'
-
-
-    
-
-    numCorrect=0.0
-    for datum in Test:
-        yVals = []
-        for yNdx in range(len(Ys)):
-            yVal = 0.0
-            for hNdx in range(len(Hs)):
-                if Ys[yNdx] == Hs[hNdx].classify(datum[0]):
-                    yVal += math.log(1/betas[hNdx])                 
-            yVals.append(yVal)
-        actual = datum[1]
-        predicted = Ys[yVals.index(max(yVals))]
-                #print actual, predicted
-        if actual == predicted:
-            numCorrect+=1
-
-    print "\nTotal accuracy : "+str(numCorrect/len(Test))
-
+    print 'Average over ',numFolds, 'runs ',sum(finalPredictions)/float(len(finalPredictions))
 
 #L=[[{1:1},-1.0],[{1:0},-1.0],[{1:2},1.0],[{1:3},1.0]]
 #U=[[{1:1.5},None]]
