@@ -17,7 +17,7 @@ def Normal(Mu,Sigma,x):
       #  print math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))
         val= math.exp(-math.fabs(5*(x-Mu)*Sigma.I*(x-Mu).T))/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
     except np.linalg.linalg.LinAlgError:
-        print 'Warning, singular matrix'
+        #print 'Warning, singular matrix'
         val =0.0
     return val
 
@@ -261,7 +261,10 @@ def normalize(Wl, Wu):
     nWu = []
 
     for weight in Wl:
-        nWl.append(float(weight)/lSum)
+        if lSum:
+            nWl.append(float(weight)/lSum)
+        else:
+            nWl.append(0)
     for weight in Wu:
         if uSum:
             nWu.append(float(weight)/uSum)
@@ -369,7 +372,7 @@ def main():
         for i in xrange(len(U)):
             Wu.append(1)
 
-        instanceMultiplier = 10
+        instanceMultiplier = 10*len(L)+len(U)
         
         # da boost loop
         for t in xrange(tboost):
@@ -389,7 +392,8 @@ def main():
 
                     # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
                     for j in xrange(instanceMultiplier):
-                        dataset.append(instance)
+                        if np.random.random() < Wl[i]:
+                            dataset.append(instance)
 
                 for i in xrange(len(U)):
                     pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
@@ -399,11 +403,13 @@ def main():
                     posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
                     neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
                     for j in xrange(pos):
-                        dataset.append(posinstance)
+                        if np.random.random() < Wu[i]:
+                            dataset.append(posinstance)
                     for j in xrange(neg):
-                        dataset.append(neginstance)
+                        if np.random.random() < Wu[i]:
+                            dataset.append(neginstance)
                 if verbose:
-                    print "dataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+                    print "\ndataset length: ", len(dataset), "actual length: ", len(L) + len(U)
 
                 tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
                 tree.maketree()
@@ -451,11 +457,12 @@ def main():
                 if actual == predicted:
                     numCorrect+=1
 
-            print "| H accuracy : "+str(numCorrect/len(Test)),
+            print "| H accuracy : "+str(numCorrect/len(Test)),"dataset length: ", len(dataset),
                 
           
             if eps >=0.5:
-                print "\nSTOPING BECAUSE EPS BAD"
+                if verbose:
+                    print "\nSTOPING BECAUSE EPS BAD"
                 Hs = Hs[:-1]
                 break
             betas.append(beta)
@@ -484,7 +491,7 @@ def main():
             if verbose:
                 print ""
             else:
-                print "      \t\t\r",
+                print "          \r",
             sys.stdout.flush()
         
 
@@ -495,7 +502,8 @@ def main():
                 yVal = 0.0
                 for hNdx in range(len(Hs)):
                     if Ys[yNdx] == Hs[hNdx].classify(datum[0]):
-                        yVal += math.log(1/betas[hNdx])                 
+                        if betas[hNdx]:
+                            yVal += math.log(1/betas[hNdx])                 
                 yVals.append(yVal)
             actual = datum[1]
             predicted = Ys[yVals.index(max(yVals))]
