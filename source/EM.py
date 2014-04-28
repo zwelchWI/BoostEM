@@ -338,7 +338,6 @@ def main():
         sys.exit(2)
 
     (attributes,folds, Ys) = readInputFile(inputArff, labeledSize,numFolds,labelFrac)
-
     finalPredictions=[]
     print "we are ready for the boosting, captain"
     for foldNdx in range(len(folds)):
@@ -347,7 +346,6 @@ def main():
         Train=[]
         for train in Trains:
             Train += train
-
         L=[]
         U=[]
         for datum in Train:
@@ -355,7 +353,6 @@ def main():
                 L.append(datum)
             else:
                 U.append((datum[0],None))    
-
         if not keepUnlabeled:
             U = []
 
@@ -367,16 +364,17 @@ def main():
         betas = []
         for i in xrange(len(L)):
             Wl.append(1)
-
         for i in xrange(len(U)):
             Wu.append(1)
 
-        instanceMultiplier = 10*len(L)+len(U)
-        
+        instanceMultiplier = 5*(len(L)+len(U))
+   #     dtM = 
         # da boost loop
         for t in xrange(tboost):
             print "boost cycle", t+1,"/",tboost,
             (Wl, Wu) = normalize(Wl, Wu)
+            if sum(Wl) == 0.0:
+                break
             Pu = EM(L, U, Wl, Wu, Ys, maxIter, thresh)
             if verbose:
                 print "EM'd them instances"
@@ -391,7 +389,9 @@ def main():
 
                     # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
                     for j in xrange(instanceMultiplier):
+             #           print Wl[i],
                         if np.random.random() < Wl[i]:
+             #               print 'ya'
                             dataset.append(instance)
 
                 for i in xrange(len(U)):
@@ -409,7 +409,8 @@ def main():
                             dataset.append(neginstance)
                 if verbose:
                     print "\ndataset length: ", len(dataset), "actual length: ", len(L) + len(U)
-
+                dtM = len(dataset)/20
+                #print dtM
                 tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
                 tree.maketree()
                 Hs.append(tree)
