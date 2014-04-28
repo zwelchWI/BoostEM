@@ -89,7 +89,9 @@ class id3:
 				kidindex = 0
 			else:
 				kidindex = 1
-
+             #   print self.attribute
+             #   print self.children 
+             #   print len(self.dataset)
 		return self.children[kidindex].classify(datapoint)
 
 
@@ -155,6 +157,7 @@ class id3:
 		return (maxattr, maxgain)
 
 	def makeleaf(self):
+                self.attribute = None
 		# simple majority rules
 		positives = 0
 		negatives = 0

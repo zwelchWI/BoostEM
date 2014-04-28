@@ -227,7 +227,6 @@ def readInputFile(fileName, labeledSize,numFolds,labelFrac):
             # add the tuple of feature dictionary, None
        #     U.append((dict, None))
         count += 1
-
     folds = [ [] for ndx in range(numFolds)]
     #Test=[]
     #Train=[]
