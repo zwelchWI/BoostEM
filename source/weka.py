@@ -19,22 +19,24 @@ class Weka:
         buildOut = subprocess.Popen(bldCmd,shell=True,stdout=subprocess.PIPE)
         buildOut.communicate()
 
-    def classify(self,d):
-        datum = copy.deepcopy(d)
-        datum[self.allAttr[-1][0]]=self.allAttr[-1][1][0]
-        data = [datum]
+    def classifyy(self,d):
+        data = copy.deepcopy(d)
+        for datum in data:
+            datum[self.allAttr[-1][0]]=self.allAttr[-1][1][0]
+     #   data = [datum]
         writeArff(self.allAttr,data,'weka/wekaTeSt.arff')
         testCmd= 'java -cp /usr/share/java/weka.jar:/usr/share/java/libsvm.jar '+self.cl+' -p 0'
         testCmd=testCmd+'  -l "weka/test'+str(self.ndx)+'" -T "weka/wekaTeSt.arff"'
         #print testCmd
         testOut = subprocess.Popen(testCmd,shell=True,stdout=subprocess.PIPE)
         out,err=testOut.communicate()
- 
+        ret = []
         outlines = out.split('\n')
         for line in outlines[5:-2]:
             vals = line.split()
 #should only be one
-            return vals[2].split(':')[1]
+            ret.append(vals[2].split(':')[1])
+        return ret
          
 
 def writeArff(attribs,data,filename):

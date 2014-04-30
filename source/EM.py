@@ -420,10 +420,17 @@ def main():
             # compute error value
             eps = 0.0
 
+            inp=[]
+            for i in xrange(len(L)):
+                inp.append(L[i][0])
+
+            pred = Hs[-1].classifyy(inp)
+
+
             for i in xrange(len(L)):
    #             if learner in 'dt':
                 actual = L[i][1]
-                predicted = Hs[-1].classify(L[i][0])
+                predicted = pred[i] #Hs[-1].classifyy(L[i][0])
                     #print actual, predicted
 
                 if actual != predicted:
@@ -431,11 +438,16 @@ def main():
 
         #        elif learner in 'bayes':
          #           print 'todo'
+            inp=[]
+            for i in xrange(len(U)):
+                inp.append(U[i][0])
+
+            pred = Hs[-1].classifyy(inp)
 
             for i in xrange(len(U)):
       #          if learner in 'dt':
                     # TODO ::: how to decide error for our unlabeled instances?
-                eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
+                eps += Wu[i]*(1.0 - Pu[i][Ys.index(pred[i])])
    #             elif learner in 'bayes':
             #        print 'todo'
             if len(U):
@@ -444,9 +456,16 @@ def main():
             print "| epsilon:", eps, "|  beta:", beta,
 
             numCorrect=0.0
-            for datum in Test:
-                actual = datum[1]
-                predicted = Hs[-1].classify(datum[0])
+            inp=[]
+            for i in xrange(len(Test)):
+                inp.append(Test[i][0])
+
+            pred = Hs[-1].classifyy(inp)
+
+
+            for ndx in range(len(Test)):
+                actual = Test[ndx][1]
+                predicted = pred[ndx]#Hs[-1].classifyy(datum[0])
                     #print actual, predicted
 
                 if actual == predicted:
@@ -465,21 +484,35 @@ def main():
 
             # compute new weights
             # downweight correct examples
+
+            inp=[]
+            for i in xrange(len(L)):
+                inp.append(L[i][0])
+
+            pred = Hs[-1].classifyy(inp)
+
+
+
             for i in xrange(len(L)):
                 #if learner in 'dt':
                 actual = L[i][1]
-                predicted = Hs[-1].classify(L[i][0])
+                predicted = pred[i]#Hs[-1].classifyy(L[i][0])
 
                 if actual == predicted:
                     Wl[i] *= beta
 
           #      elif learner in 'bayes':
            #         print 'todo'
+            inp=[]
+            for i in xrange(len(U)):
+                inp.append(U[i][0])
+
+            pred = Hs[-1].classifyy(inp)
 
             for i in xrange(len(U)):
     #            if learner in 'dt':
                     # TODO ::: how to reweight our unlabeled instances?
-                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
+                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(pred[i])])
  #               elif learner in 'bayes':
   #                  print 'todo'
 
@@ -488,19 +521,26 @@ def main():
             else:
                 print "          \r",
             sys.stdout.flush()
+
+        inp=[]
+        for i in xrange(len(Test)):
+            inp.append(Test[i][0])
+        hPred=[]
+        for hNdx in range(len((Hs))):
+            hPred.append(Hs[hNdx].classifyy(inp))
         
 
         numCorrect=0.0
-        for datum in Test:
+        for dNdx in range(len(Test)):
             yVals = []
             for yNdx in range(len(Ys)):
                 yVal = 0.0
                 for hNdx in range(len(Hs)):
-                    if Ys[yNdx] == Hs[hNdx].classify(datum[0]):
+                    if Ys[yNdx] == hPred[hNdx][dNdx]:
                         if betas[hNdx]:
                             yVal += math.log(1/betas[hNdx])                 
                 yVals.append(yVal)
-            actual = datum[1]
+            actual = Test[dNdx][1]
             predicted = Ys[yVals.index(max(yVals))]
                     #print actual, predicted
             if actual == predicted:
