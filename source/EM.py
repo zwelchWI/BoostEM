@@ -4,19 +4,13 @@ import math
 import getopt
 from dtLearn import id3
 import copy
+from weka import Weka
+
 
 def Normal(Mu,Sigma,x):
     try:
-      #  print x-Mu
-      #  print Sigma.I
-      #  print -.5*(x-Mu)*Sigma.I*(x-Mu).T
-      #  print math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)
-
-      #  print len(x)
-      #  print math.fabs(np.linalg.det(Sigma))
-      #  print math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))
         val= math.exp(-math.fabs(5*(x-Mu)*Sigma.I*(x-Mu).T))/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
-    except np.linalg.linalg.LinAlgError:
+    except :
         #print 'Warning, singular matrix'
         val =0.0
     return val
@@ -52,7 +46,8 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
         Sigma=np.mat(np.zeros([len(L[0][0].keys()),len(L[0][0].keys())]))
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:
-                X = np.matrix(L[lNdx][0].values())       
+                X = np.matrix(L[lNdx][0].values())
+
                 Mu = Mu + (Wl[lNdx]*effW)*X
         if Ycounts[yNdx]:
             Mu = Mu/Ycounts[yNdx]
@@ -379,36 +374,37 @@ def main():
             if verbose:
                 print "EM'd them instances"
             # learner part
-            if learner in 'dt':
-                # id3 decision tree, may need full instance counts (not weights)
-                dataset = []
+            # id3 decision tree, may need full instance counts (not weights)
+            dataset = []
 
-                for i in xrange(len(L)):
-                    instance = copy.deepcopy(L[i][0])
-                    instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
+            for i in xrange(len(L)):
+                instance = copy.deepcopy(L[i][0])
+                instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
 
-                    # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
-                    for j in xrange(instanceMultiplier):
+                # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
+                for j in xrange(instanceMultiplier):
              #           print Wl[i],
-                        if np.random.random() < Wl[i]:
+                    if np.random.random() < Wl[i]:
              #               print 'ya'
-                            dataset.append(instance)
+                        dataset.append(instance)
 
-                for i in xrange(len(U)):
-                    pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
-                    neg = instanceMultiplier - pos
-                    posinstance = copy.deepcopy(U[i][0])
-                    neginstance = copy.deepcopy(U[i][0])
-                    posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
-                    neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
-                    for j in xrange(pos):
-                        if np.random.random() < Wu[i]:
-                            dataset.append(posinstance)
-                    for j in xrange(neg):
-                        if np.random.random() < Wu[i]:
-                            dataset.append(neginstance)
-                if verbose:
-                    print "\ndataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+            for i in xrange(len(U)):
+                pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
+                neg = instanceMultiplier - pos
+                posinstance = copy.deepcopy(U[i][0])
+                neginstance = copy.deepcopy(U[i][0])
+                posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
+                neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
+                for j in xrange(pos):
+                    if np.random.random() < Wu[i]:
+                        dataset.append(posinstance)
+                for j in xrange(neg):
+                    if np.random.random() < Wu[i]:
+                        dataset.append(neginstance)
+            if verbose:
+                print "\ndataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+
+            if learner in 'dt':
                 dtM = len(dataset)/20
                 #print dtM
                 tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
@@ -417,32 +413,31 @@ def main():
                 if verbose:
                     print "\nGenerated ID3 Tree: " + tree.display()
 
-            elif learner in 'bayes':
-                # naive bayes
-                print 'add in bayes code'
-                # add model to Hs list
-
+            else: 
+                # Weka BS
+                H = Weka(learner,attributes[:len(attributes)-1], dataset, attributes,t)
+                Hs.append(H)
             # compute error value
             eps = 0.0
 
             for i in xrange(len(L)):
-                if learner in 'dt':
-                    actual = L[i][1]
-                    predicted = Hs[-1].classify(L[i][0])
+   #             if learner in 'dt':
+                actual = L[i][1]
+                predicted = Hs[-1].classify(L[i][0])
                     #print actual, predicted
 
-                    if actual != predicted:
-                        eps += Wl[i]
+                if actual != predicted:
+                    eps += Wl[i]
 
-                elif learner in 'bayes':
-                    print 'todo'
+        #        elif learner in 'bayes':
+         #           print 'todo'
 
             for i in xrange(len(U)):
-                if learner in 'dt':
+      #          if learner in 'dt':
                     # TODO ::: how to decide error for our unlabeled instances?
-                    eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
-                elif learner in 'bayes':
-                    print 'todo'
+                eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
+   #             elif learner in 'bayes':
+            #        print 'todo'
             if len(U):
                 eps /= 2.0 #WE THINK THIS SHOULD HAPPEN BECAUSE THERE ARE 2 EPSILONS
             beta = eps / (1.0 - eps)
@@ -471,22 +466,22 @@ def main():
             # compute new weights
             # downweight correct examples
             for i in xrange(len(L)):
-                if learner in 'dt':
-                    actual = L[i][1]
-                    predicted = Hs[-1].classify(L[i][0])
+                #if learner in 'dt':
+                actual = L[i][1]
+                predicted = Hs[-1].classify(L[i][0])
 
-                    if actual == predicted:
-                        Wl[i] *= beta
+                if actual == predicted:
+                    Wl[i] *= beta
 
-                elif learner in 'bayes':
-                    print 'todo'
+          #      elif learner in 'bayes':
+           #         print 'todo'
 
             for i in xrange(len(U)):
-                if learner in 'dt':
+    #            if learner in 'dt':
                     # TODO ::: how to reweight our unlabeled instances?
-                    Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
-                elif learner in 'bayes':
-                    print 'todo'
+                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
+ #               elif learner in 'bayes':
+  #                  print 'todo'
 
             if verbose:
                 print ""
