@@ -9,9 +9,8 @@ from weka import Weka
 
 def Normal(Mu,Sigma,x):
     try:
-        val= math.exp(-math.fabs(5*(x-Mu)*Sigma.I*(x-Mu).T))/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
+        val= math.exp(-math.fabs(0.5*(x-Mu)*Sigma.I*(x-Mu).T))/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
     except :
-        #print 'Warning, singular matrix'
         val =0.0
     return val
 
@@ -26,9 +25,13 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     #threshold is the log linear threshold difference at which to stop
     
     #Init using only labeled data
+    Wl = []
+    Wu = []
 
-    if len(U) == 0:
-        return []
+    for i in xrange(len(L)):
+        Wl.append(1.0/len(L))
+    for i in xrange(len(U)):
+        Wu.append(1.0/len(U))
 
     Ycounts  = [0.0,0.0]
     Wlcounts = [0.0,0.0]
@@ -39,23 +42,20 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     Mus    = []
     Sigmas = []
     for yNdx in range(len(Ys)):
-        effW = 0.0
-        if Wlcounts[yNdx]:
-            effW = Ycounts[yNdx]/Wlcounts[yNdx]
         Mu = np.mat(np.zeros(len(L[0][0].keys())))
         Sigma=np.mat(np.zeros([len(L[0][0].keys()),len(L[0][0].keys())]))
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:
                 X = np.matrix(L[lNdx][0].values())
 
-                Mu = Mu + (Wl[lNdx]*effW)*X
+                Mu = Mu + (Wl[lNdx]*len(L))*X#effW)*X
         if Ycounts[yNdx]:
             Mu = Mu/Ycounts[yNdx]
 
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:        
                 X = np.matrix(L[lNdx][0].values())       
-                Sigma = Sigma + (Wl[lNdx]*effW*X-Mu).T*(Wl[lNdx]*effW*X-Mu)
+                Sigma = Sigma + (Wl[lNdx]*len(L)*X-Mu).T*(Wl[lNdx]*len(L)*X-Mu)
         if Ycounts[yNdx]:
             Sigma = Sigma/Ycounts[yNdx]
 
@@ -66,28 +66,43 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     l = Ycounts[0]+Ycounts[1]
     Pi = [Ycounts[0]/l,Ycounts[1]/l]
 
+    if len(U) == 0:
+        logLike = 0.0
+
+        for l in L:
+            yNdx = Ys.index(l[1])
+            logLike = logLike + log2(Pi[yNdx]*Normal(Mus[yNdx],Sigmas[yNdx],l[0].values()))
+        return []
 
     ndx = -1
     diff = None
     condition = True
+
+
+
     while condition:
                 
         #E step
         gammas = np.matrix(np.zeros([len(U),len(Ys)]))
-
         for uNdx in range(len(U)):
             for yNdx in range(len(Ys)):
                 gammas[uNdx,yNdx] = Pi[yNdx]*Normal(Mus[yNdx],Sigmas[yNdx],U[uNdx][0].values())
             denom = gammas[uNdx,0]+ gammas[uNdx,1]
             for yNdx in range(len(Ys)):
-                if denom > 0:
+                if denom:
                     gammas[uNdx,yNdx] = gammas[uNdx,yNdx]/(denom) 
+                else:
+                    gammas[uNdx,yNdx] = 1.0/len(Ys)
+
         #M step
         Ljs = []
         for yNdx in range(len(Ys)):
-            effW = 0.0
-            if Wlcounts[yNdx]:
-                effW = Ycounts[yNdx]/Wlcounts[yNdx]
+          #  effW = 0.0
+          #  if Wlcounts[yNdx]:
+         #       print 'ycount',Ycounts[yNdx]
+         #       print 'wlcount',Wlcounts[yNdx]
+         #       effW = Ycounts[yNdx]/Wlcounts[yNdx]
+         #       print 'effw',effW
             Lj = Ycounts[yNdx]
             for uNdx in range(len(U)):
                 Lj = Lj + gammas[uNdx,yNdx]
@@ -95,7 +110,7 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             for lNdx in range(len(L)):
                 if Ys[yNdx] == L[lNdx][1]:        
                     X = np.matrix(L[lNdx][0].values())       
-                    Mu = Mu + Wl[lNdx]*effW*X
+                    Mu = Mu + Wl[lNdx]*len(L)*X#effW*X
  
             for uNdx in range(len(U)):
                 X = np.matrix(U[uNdx][0].values())       
@@ -106,8 +121,8 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             Sigma=np.mat(np.zeros([len(L[0][0].keys()),len(L[0][0].keys())]))
             for lNdx in range(len(L)):
                 if Ys[yNdx] == L[lNdx][1]:
-                    X = np.matrix(L[lNdx][0].values())           
-                    Sigma = Sigma + (Wl[lNdx]*effW*X-Mu).T*(Wl[lNdx]*effW*X-Mu)
+                    X = np.matrix(L[lNdx][0].values())
+                    Sigma = Sigma + (Wl[lNdx]*len(L)*X-Mu).T*(Wl[lNdx]*len(L)*X-Mu)
  
             for uNdx in range(len(U)):
                 X = np.matrix(U[uNdx][0].values())       
@@ -475,8 +490,8 @@ def main():
                 
           
             if eps >=0.5:
-                if verbose:
-                    print "\nSTOPING BECAUSE EPS BAD"
+              #  if verbose:
+                print "\nSTOPING BECAUSE EPS BAD"
                 Hs = Hs[:-1]
                 break
             betas.append(beta)
