@@ -70,6 +70,11 @@ class id3:
 					else:
 						positives += 1
 		return str(negatives) + " " + str(positives)		
+        def classifyy(self,datas):
+            ret = []
+            for data in datas:
+                ret.append(self.classify(data))
+            return ret
 
 
 	def classify(self, datapoint):

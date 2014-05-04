@@ -4,20 +4,13 @@ import math
 import getopt
 from dtLearn import id3
 import copy
+from weka import Weka
+
 
 def Normal(Mu,Sigma,x):
     try:
-      #  print x-Mu
-      #  print Sigma.I
-      #  print -.5*(x-Mu)*Sigma.I*(x-Mu).T
-      #  print math.exp(-.5*(x-Mu)*Sigma.I*(x-Mu).T)
-
-      #  print len(x)
-      #  print math.fabs(np.linalg.det(Sigma))
-      #  print math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))
-        val= math.exp(-math.fabs(5*(x-Mu)*Sigma.I*(x-Mu).T))/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
-    except np.linalg.linalg.LinAlgError:
-        #print 'Warning, singular matrix'
+        val= math.exp(-math.fabs(0.5*(x-Mu)*Sigma.I*(x-Mu).T))/math.sqrt((2*math.pi)**len(x)*math.fabs(np.linalg.det(Sigma)))    
+    except :
         val =0.0
     return val
 
@@ -32,9 +25,13 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     #threshold is the log linear threshold difference at which to stop
     
     #Init using only labeled data
+    Wl = []
+    Wu = []
 
-    if len(U) == 0:
-        return []
+    for i in xrange(len(L)):
+        Wl.append(1.0/len(L))
+    for i in xrange(len(U)):
+        Wu.append(1.0/len(U))
 
     Ycounts  = [0.0,0.0]
     Wlcounts = [0.0,0.0]
@@ -45,22 +42,20 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     Mus    = []
     Sigmas = []
     for yNdx in range(len(Ys)):
-        effW = 0.0
-        if Wlcounts[yNdx]:
-            effW = Ycounts[yNdx]/Wlcounts[yNdx]
         Mu = np.mat(np.zeros(len(L[0][0].keys())))
         Sigma=np.mat(np.zeros([len(L[0][0].keys()),len(L[0][0].keys())]))
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:
-                X = np.matrix(L[lNdx][0].values())       
-                Mu = Mu + (Wl[lNdx]*effW)*X
+                X = np.matrix(L[lNdx][0].values())
+
+                Mu = Mu + (Wl[lNdx]*len(L))*X#effW)*X
         if Ycounts[yNdx]:
             Mu = Mu/Ycounts[yNdx]
 
         for lNdx in range(len(L)):
             if Ys[yNdx] == L[lNdx][1]:        
                 X = np.matrix(L[lNdx][0].values())       
-                Sigma = Sigma + (Wl[lNdx]*effW*X-Mu).T*(Wl[lNdx]*effW*X-Mu)
+                Sigma = Sigma + (Wl[lNdx]*len(L)*X-Mu).T*(Wl[lNdx]*len(L)*X-Mu)
         if Ycounts[yNdx]:
             Sigma = Sigma/Ycounts[yNdx]
 
@@ -71,28 +66,43 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     l = Ycounts[0]+Ycounts[1]
     Pi = [Ycounts[0]/l,Ycounts[1]/l]
 
+    if len(U) == 0:
+        logLike = 0.0
+
+        for l in L:
+            yNdx = Ys.index(l[1])
+            logLike = logLike + log2(Pi[yNdx]*Normal(Mus[yNdx],Sigmas[yNdx],l[0].values()))
+        return []
 
     ndx = -1
     diff = None
     condition = True
+
+
+
     while condition:
                 
         #E step
         gammas = np.matrix(np.zeros([len(U),len(Ys)]))
-
         for uNdx in range(len(U)):
             for yNdx in range(len(Ys)):
                 gammas[uNdx,yNdx] = Pi[yNdx]*Normal(Mus[yNdx],Sigmas[yNdx],U[uNdx][0].values())
             denom = gammas[uNdx,0]+ gammas[uNdx,1]
             for yNdx in range(len(Ys)):
-                if denom > 0:
+                if denom:
                     gammas[uNdx,yNdx] = gammas[uNdx,yNdx]/(denom) 
+                else:
+                    gammas[uNdx,yNdx] = 1.0/len(Ys)
+
         #M step
         Ljs = []
         for yNdx in range(len(Ys)):
-            effW = 0.0
-            if Wlcounts[yNdx]:
-                effW = Ycounts[yNdx]/Wlcounts[yNdx]
+          #  effW = 0.0
+          #  if Wlcounts[yNdx]:
+         #       print 'ycount',Ycounts[yNdx]
+         #       print 'wlcount',Wlcounts[yNdx]
+         #       effW = Ycounts[yNdx]/Wlcounts[yNdx]
+         #       print 'effw',effW
             Lj = Ycounts[yNdx]
             for uNdx in range(len(U)):
                 Lj = Lj + gammas[uNdx,yNdx]
@@ -100,7 +110,7 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             for lNdx in range(len(L)):
                 if Ys[yNdx] == L[lNdx][1]:        
                     X = np.matrix(L[lNdx][0].values())       
-                    Mu = Mu + Wl[lNdx]*effW*X
+                    Mu = Mu + Wl[lNdx]*len(L)*X#effW*X
  
             for uNdx in range(len(U)):
                 X = np.matrix(U[uNdx][0].values())       
@@ -111,8 +121,8 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
             Sigma=np.mat(np.zeros([len(L[0][0].keys()),len(L[0][0].keys())]))
             for lNdx in range(len(L)):
                 if Ys[yNdx] == L[lNdx][1]:
-                    X = np.matrix(L[lNdx][0].values())           
-                    Sigma = Sigma + (Wl[lNdx]*effW*X-Mu).T*(Wl[lNdx]*effW*X-Mu)
+                    X = np.matrix(L[lNdx][0].values())
+                    Sigma = Sigma + (Wl[lNdx]*len(L)*X-Mu).T*(Wl[lNdx]*len(L)*X-Mu)
  
             for uNdx in range(len(U)):
                 X = np.matrix(U[uNdx][0].values())       
@@ -379,36 +389,37 @@ def main():
             if verbose:
                 print "EM'd them instances"
             # learner part
-            if learner in 'dt':
-                # id3 decision tree, may need full instance counts (not weights)
-                dataset = []
+            # id3 decision tree, may need full instance counts (not weights)
+            dataset = []
 
-                for i in xrange(len(L)):
-                    instance = copy.deepcopy(L[i][0])
-                    instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
+            for i in xrange(len(L)):
+                instance = copy.deepcopy(L[i][0])
+                instance[attributes[-1][0]] = L[i][1] # set class attribute to the labeled class
 
-                    # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
-                    for j in xrange(instanceMultiplier):
+                # append instanceMultiplier to give the instance the same weight as the unlabeled fractions
+                for j in xrange(instanceMultiplier):
              #           print Wl[i],
-                        if np.random.random() < Wl[i]:
+                    if np.random.random() < Wl[i]:
              #               print 'ya'
-                            dataset.append(instance)
+                        dataset.append(instance)
 
-                for i in xrange(len(U)):
-                    pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
-                    neg = instanceMultiplier - pos
-                    posinstance = copy.deepcopy(U[i][0])
-                    neginstance = copy.deepcopy(U[i][0])
-                    posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
-                    neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
-                    for j in xrange(pos):
-                        if np.random.random() < Wu[i]:
-                            dataset.append(posinstance)
-                    for j in xrange(neg):
-                        if np.random.random() < Wu[i]:
-                            dataset.append(neginstance)
-                if verbose:
-                    print "\ndataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+            for i in xrange(len(U)):
+                pos = int(Pu[i][0]*instanceMultiplier) # add frac of instanceMultiplier positive instances
+                neg = instanceMultiplier - pos
+                posinstance = copy.deepcopy(U[i][0])
+                neginstance = copy.deepcopy(U[i][0])
+                posinstance[attributes[-1][0]] = attributes[-1][1][0] # add in positve class value
+                neginstance[attributes[-1][0]] = attributes[-1][1][1] # add in negative class value
+                for j in xrange(pos):
+                    if np.random.random() < Wu[i]:
+                        dataset.append(posinstance)
+                for j in xrange(neg):
+                    if np.random.random() < Wu[i]:
+                        dataset.append(neginstance)
+            if verbose:
+                print "\ndataset length: ", len(dataset), "actual length: ", len(L) + len(U)
+
+            if learner in 'dt':
                 dtM = len(dataset)/20
                 #print dtM
                 tree = id3(attributes[:len(attributes)-1], dataset, attributes, m=dtM)
@@ -417,41 +428,59 @@ def main():
                 if verbose:
                     print "\nGenerated ID3 Tree: " + tree.display()
 
-            elif learner in 'bayes':
-                # naive bayes
-                print 'add in bayes code'
-                # add model to Hs list
-
+            else: 
+                # Weka BS
+                H = Weka(learner,attributes[:len(attributes)-1], dataset, attributes,t)
+                Hs.append(H)
             # compute error value
             eps = 0.0
 
+            inp=[]
             for i in xrange(len(L)):
-                if learner in 'dt':
-                    actual = L[i][1]
-                    predicted = Hs[-1].classify(L[i][0])
+                inp.append(L[i][0])
+
+            pred = Hs[-1].classifyy(inp)
+
+
+            for i in xrange(len(L)):
+   #             if learner in 'dt':
+                actual = L[i][1]
+                predicted = pred[i] #Hs[-1].classifyy(L[i][0])
                     #print actual, predicted
 
-                    if actual != predicted:
-                        eps += Wl[i]
+                if actual != predicted:
+                    eps += Wl[i]
 
-                elif learner in 'bayes':
-                    print 'todo'
+        #        elif learner in 'bayes':
+         #           print 'todo'
+            inp=[]
+            for i in xrange(len(U)):
+                inp.append(U[i][0])
+
+            pred = Hs[-1].classifyy(inp)
 
             for i in xrange(len(U)):
-                if learner in 'dt':
+      #          if learner in 'dt':
                     # TODO ::: how to decide error for our unlabeled instances?
-                    eps += Wu[i]*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
-                elif learner in 'bayes':
-                    print 'todo'
+                eps += Wu[i]*(1.0 - Pu[i][Ys.index(pred[i])])
+   #             elif learner in 'bayes':
+            #        print 'todo'
             if len(U):
                 eps /= 2.0 #WE THINK THIS SHOULD HAPPEN BECAUSE THERE ARE 2 EPSILONS
             beta = eps / (1.0 - eps)
             print "| epsilon:", eps, "|  beta:", beta,
 
             numCorrect=0.0
-            for datum in Test:
-                actual = datum[1]
-                predicted = Hs[-1].classify(datum[0])
+            inp=[]
+            for i in xrange(len(Test)):
+                inp.append(Test[i][0])
+
+            pred = Hs[-1].classifyy(inp)
+
+
+            for ndx in range(len(Test)):
+                actual = Test[ndx][1]
+                predicted = pred[ndx]#Hs[-1].classifyy(datum[0])
                     #print actual, predicted
 
                 if actual == predicted:
@@ -461,8 +490,8 @@ def main():
                 
           
             if eps >=0.5:
-                if verbose:
-                    print "\nSTOPING BECAUSE EPS BAD"
+              #  if verbose:
+                print "\nSTOPING BECAUSE EPS BAD"
                 Hs = Hs[:-1]
                 break
             betas.append(beta)
@@ -470,42 +499,63 @@ def main():
 
             # compute new weights
             # downweight correct examples
+
+            inp=[]
             for i in xrange(len(L)):
-                if learner in 'dt':
-                    actual = L[i][1]
-                    predicted = Hs[-1].classify(L[i][0])
+                inp.append(L[i][0])
 
-                    if actual == predicted:
-                        Wl[i] *= beta
+            pred = Hs[-1].classifyy(inp)
 
-                elif learner in 'bayes':
-                    print 'todo'
+
+
+            for i in xrange(len(L)):
+                #if learner in 'dt':
+                actual = L[i][1]
+                predicted = pred[i]#Hs[-1].classifyy(L[i][0])
+
+                if actual == predicted:
+                    Wl[i] *= beta
+
+          #      elif learner in 'bayes':
+           #         print 'todo'
+            inp=[]
+            for i in xrange(len(U)):
+                inp.append(U[i][0])
+
+            pred = Hs[-1].classifyy(inp)
 
             for i in xrange(len(U)):
-                if learner in 'dt':
+    #            if learner in 'dt':
                     # TODO ::: how to reweight our unlabeled instances?
-                    Wu[i] *= beta*(1.0 - Pu[i][Ys.index(Hs[-1].classify(U[i][0]))])
-                elif learner in 'bayes':
-                    print 'todo'
+                Wu[i] *= beta*(1.0 - Pu[i][Ys.index(pred[i])])
+ #               elif learner in 'bayes':
+  #                  print 'todo'
 
             if verbose:
                 print ""
             else:
                 print "          \r",
             sys.stdout.flush()
+
+        inp=[]
+        for i in xrange(len(Test)):
+            inp.append(Test[i][0])
+        hPred=[]
+        for hNdx in range(len((Hs))):
+            hPred.append(Hs[hNdx].classifyy(inp))
         
 
         numCorrect=0.0
-        for datum in Test:
+        for dNdx in range(len(Test)):
             yVals = []
             for yNdx in range(len(Ys)):
                 yVal = 0.0
                 for hNdx in range(len(Hs)):
-                    if Ys[yNdx] == Hs[hNdx].classify(datum[0]):
+                    if Ys[yNdx] == hPred[hNdx][dNdx]:
                         if betas[hNdx]:
                             yVal += math.log(1/betas[hNdx])                 
                 yVals.append(yVal)
-            actual = datum[1]
+            actual = Test[dNdx][1]
             predicted = Ys[yVals.index(max(yVals))]
                     #print actual, predicted
             if actual == predicted:
