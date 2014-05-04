@@ -25,13 +25,13 @@ def EM(L,U,Wl,Wu,Ys,maxIter,threshold):
     #threshold is the log linear threshold difference at which to stop
     
     #Init using only labeled data
-    Wl = []
-    Wu = []
+   # Wl = []
+   # Wu = []
 
-    for i in xrange(len(L)):
-        Wl.append(1.0/len(L))
-    for i in xrange(len(U)):
-        Wu.append(1.0/len(U))
+   # for i in xrange(len(L)):
+   #     Wl.append(1.0/len(L))
+   # for i in xrange(len(U)):
+   #     Wu.append(1.0/len(U))
 
     Ycounts  = [0.0,0.0]
     Wlcounts = [0.0,0.0]
