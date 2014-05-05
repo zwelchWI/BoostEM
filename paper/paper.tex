@@ -47,6 +47,9 @@
 
 \documentclass{sig-alternate}
 
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
 \begin{document}
 %
 % --- Author Metadata here ---
@@ -124,8 +127,31 @@ STEVE
 \section{Background}
 \subsection{Boost}
 \subsection{Expectation Maximization}
+Expectation is an iterative algorithm which uses the values of existing,complete data points to compute the maximum likelihood estimate for missing values for other, incomplete data. Expectation Maximization was originally introduced in ~\cite{Dempster77maximumlikelihood} and produces a probabalistic distribution of the possible values of missing data given fully labeled data. In the context of semi-supervised learning, there is a set of labeled input data and a potentially much larger set of unlabeled data and for each unlabeled instance u, EM can provide a probability for each label.  These probabilities can be used as fractional instances of labeled data, making the input training set much bigger and diverse and potentially giving a better approximation of the distribution of labels to the learner. In many cases, performance can be drastically improved by using these fractional counts.
+
+Expectation maximization is a general approach and can be augmented to suite a variety of settings and assumptions.  For instance, in our implementation of BoostEM we assume the data is well modeled by a Gaussian mixture model and the instances have weights associated with them.    
+
+     
 \section{Related Work}
 \section{BoostEM}
+The main insight of BoostEM is observing that Boost and Expectation Maximization both attempt to improve the current iteration's results by using information from the previous iteration; BoostEM simply couples the results of the two algorithms together to improve results.  BoostEM uses a weighted EM algorithm, and these weights are identical to the weights used in the Boost algorithm.  At it's most basic level, BoostEM simply runs a weighted Expectation Maximization on the unlabeled instances, and uses the fractional counts to create a weighted training set for some base learner.  The results of this base learner are then used to update the weights, which are then input to EM in the next iteration.
+
+\begin{algorithm}
+\caption{BoostEM}\label{euclid}
+\begin{algorithmic}[1]
+\Procedure{BoostEM}{$L,U,T$}
+\For{$t=1 \dots T$}
+\State $P_{t} \gets EM(L,U,Wl,Wu)$
+\EndFor
+\State \textbf{return} $b$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+By using a weighted EM, we can place more emphasis on the instances our learner incorrectly classifies in the Gaussian distribution of instances we assume. Or more correctly, since there is no ground truth to the unlabeled instances, we can penalize every prediction from learner $H$ on unlabeled instance $x$ by $1-p(H(x))$, where $p(\dot)$ is the distribution of labels from EM.  In this way, the learner penalizes unexpected labels (ones with small probability) more than expected ones.
+
+Notice as well that using Expectation Maximization for fractional counts and adaBoost can be recovered from BoostEM by setting certain inputs and parameters.  Setting the number of boosting iterations to 1 is equivalent to EM, while inputting no unlabeled instances reduces to traditional labeled Boosting.    
+    
 \section{Evaluation}
 \subsection{Methodology}
 STEVE
@@ -137,7 +163,7 @@ STEVE
 \section{Acknowledgments}
 
 \bibliographystyle{abbrv}
-\bibliography{sigproc}  % sigproc.bib is the name of the Bibliography in this case
+\bibliography{paper}  % sigproc.bib is the name of the Bibliography in this case
 
 
 
