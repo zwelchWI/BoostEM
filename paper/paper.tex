@@ -53,7 +53,7 @@
 \begin{document}
 %
 % --- Author Metadata here ---
-\conferenceinfo{CS 760}{'14,Madison WI, USA}
+\conferenceinfo{CS 760}{'14, Madison WI, USA}
 \CopyrightYear{2014} % Allows default copyright year (20XX) to be over-ridden - IF NEED BE.
 %\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
 % --- End of Author Metadata ---
@@ -103,12 +103,12 @@
 % 1st. author
 \alignauthor
 Zach Welch\\
-       \affaddr{UW-Madison}\\
+       \affaddr{UW--Madison}\\
        \email{zwelch@cs.wisc.edu}
 % 2nd. author
 \alignauthor
 Steven Johnson\\
-       \affaddr{UW-Madison}\\
+       \affaddr{UW--Madison}\\
        \email{sjj@cs.wisc.edu}
 }
 \date{May 12, 2014}
@@ -123,7 +123,11 @@ We introduce BoostEM, a semi-supervised learning algorithm which combines the be
 
 % A category with the (minimum) three required fields
 \section{Introduction}
-STEVE
+
+It is well established in Machine Learning that labels are difficult to obtain while unlabeled data are abundant in many situations where we would like to classify new instances. Examples of such situations are labeling x-rays as benign or malignant, tweets as instances of bullying, news articles as interesting to a given reader, or whether a photograph contains a given object. Because of this scarcity of labeled instances, using semi-supervised learning techniques, such as Expectation Maximization, to combine unlabeled and labeled data into an integrated model is a good idea to potentially improve learner accuracy and reduce human labour.
+
+This paper describes the development and evaluation of a semi-supervised learning algorithm, BoostEM, which combines the benefits of an ensemble method like Boosting with the benefits of using unlabeled data. The next section provides an overview of related work on Boosting and Expectation Maximization. This section is followed by the details of the BoostEM algorithm and an experimental evaluation of our implementation. We then present the results of our evaluation and discuss our findings and their implications.
+
 \section{Background}
 \subsection{Boost}
 \subsection{Expectation Maximization}
@@ -153,6 +157,13 @@ By using a weighted EM, we can place more emphasis on the instances our learner 
 Notice as well that using Expectation Maximization for fractional counts and adaBoost can be recovered from BoostEM by setting certain inputs and parameters.  Setting the number of boosting iterations to 1 is equivalent to EM, while inputting no unlabeled instances reduces to traditional labeled Boosting.    
     
 \section{Evaluation}
+We implemented the BoostEM algorithm in \textsc{python} and evaluated its accuracy against a number of other algorithms using two learners and a variety of parameter settings  as described below.
+
+\subsection{Data sets}
+
+
+\subsection{Benchmark Algorithms}
+
 \subsection{Methodology}
 STEVE
 \subsection{Results}
