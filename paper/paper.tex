@@ -170,12 +170,34 @@ Notice as well that using Expectation Maximization for fractional counts and ada
 We implemented the BoostEM algorithm in \textsc{python} and evaluated its accuracy against a number of other algorithms using two learners and a variety of parameter settings  as described below.
 
 \subsection{Data sets}
-STEVE
+
+We evaluated the performance of our algorithm on four data sets from the UCI Machine Learning Repository: Breast Cancer Wisconsin (Diagnostic), which classifies digitized images of breast mass as benign or malignant; Parkinsons, which classifies biomedical voice measurements from patients as healthy or Parkinson's; Banknote Authentication, which classifies pictures of currency as genuine or foraged; and Vertebral Column, which classifies biomedical data from patients as either normal or abnormal vertebral column. Each dataset is for a binary classification task, and each attribute is real-valued. For each dataset, the number of attributes ranges from 5 to 32 and the number of instances ranges from 197 to 1372. 
 
 \subsection{Benchmark Algorithms}
-STEVE
+
+We used five other algorithms for comparison to BoostEM to evaluate its performance. The following lists the algorithms' abbreviations as used in the graphs and discussion and describes them.
+
+\begin{enumerate}
+\item \textbf{BoostEM}: our implementation of the BoostEM algorithm
+\item \textbf{FullBoost}: applying the AdaBoost algorithm to the fully labeled dataset
+\item \textbf{justBoost} applying the AdaBoost algorithm to the fraction of the labeled dataset
+\item \textbf{justEM} applying Expectation Maximization to the fraction of the labeled dataset
+\item \textbf{full\{Algorithm A\}} applying A to the fully labeled dataset without Boosting or EM
+\item \textbf{just\{Algorithm A\}} applying A to the fraction of the labeled dataset without Boosting or EM
+\end{enumerate}
+
 \subsection{Methodology}
-STEVE
+
+We evaluated the aforementioned algorithms manipulating the following parameters.
+
+\begin{enumerate}
+\item \textbf{Dataset}: Breast Cancer Wisconsin (Diagnostic), Parkinsons, Banknote Authentication, Vertebral Column
+\item \textbf{Learner}: ID3 Decision Tree, Naive Bayes
+\item \textbf{Fraction of Labeled Instances} 5\%, 20\%
+\end{enumerate}
+
+For each combination of these parameters, we averaged the resulting accuracies of five 10-fold cross validation runs. 
+
 \subsection{Results}
 
 
