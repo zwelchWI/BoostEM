@@ -49,7 +49,6 @@
 
 \usepackage{algorithm}
 \usepackage{algpseudocode}
-
 \begin{document}
 %
 % --- Author Metadata here ---
@@ -130,6 +129,9 @@ This paper describes the development and evaluation of a semi-supervised learnin
 
 \section{Background}
 \subsection{Boost}
+
+~\cite{Freund:1997:DGO:261540.261549}
+
 \subsection{Expectation Maximization}
 Expectation is an iterative algorithm which uses the values of existing,complete data points to compute the maximum likelihood estimate for missing values for other, incomplete data. Expectation Maximization was originally introduced in ~\cite{Dempster77maximumlikelihood} and produces a probabalistic distribution of the possible values of missing data given fully labeled data. In the context of semi-supervised learning, there is a set of labeled input data and a potentially much larger set of unlabeled data and for each unlabeled instance u, EM can provide a probability for each label.  These probabilities can be used as fractional instances of labeled data, making the input training set much bigger and diverse and potentially giving a better approximation of the distribution of labels to the learner. In many cases, performance can be drastically improved by using these fractional counts.
 
@@ -143,11 +145,19 @@ The main insight of BoostEM is observing that Boost and Expectation Maximization
 \begin{algorithm}
 \caption{BoostEM}\label{euclid}
 \begin{algorithmic}[1]
-\Procedure{BoostEM}{$L,U,T$}
+\Procedure{BoostEM}{$L,U,H,T$}
 \For{$t=1 \dots T$}
-\State $P_{t} \gets EM(L,U,Wl,Wu)$
+\State get fractional counts $P_{t} \gets EM(L,U,Wl,Wu)$
+\State $H_{t} \gets \text{model learned from L and fractional counts of U}$
+\State $\epsilon_{t} = \sum_{i=1}^{|L|} Wl_{i}(1-\delta(h_{t}(L_{i}),y_{i}))$
+\State $\epsilon_{t} += \sum_{i=1}^{|U|} Wu_{i}(1-\delta(h_{t}(L_{i}),{P_{t,}}_{h_{t}(L_{i})}))$
+\State if $|U| > 0$ then $\epsilon /=2$
+\State $\beta_{t} \gets \frac{\epsilon_{t}}{1-\epsilon_{t}}$
+\State for $i,h_{t}(L_{i} = y_{i}) \in |L| Wl(i) \gets Wl(i)*\beta_{t}$
+\State for $i \in |U| ul(i) \gets Wu(i)*\beta_{t}$
+
 \EndFor
-\State \textbf{return} $b$
+\State \textbf{return} $\arg \max_{y} \sum_{i=1}^{T}\bigg(\log(\frac{1}{\beta_{t}}\bigg) \delta(\bf{x},y)$
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
