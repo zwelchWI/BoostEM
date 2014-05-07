@@ -146,15 +146,24 @@ The main insight of BoostEM is observing that Boost and Expectation Maximization
 \caption{BoostEM}\label{euclid}
 \begin{algorithmic}[1]
 \Procedure{BoostEM}{$L,U,H,T$}
+\State L=Labeled Data
+\State U=Unlabeled Data
+\State H=Learner
+\State T=Number of Boost iterations
+
+\State for $i \in |L|$, $ Wl(i) \gets 1$
+\State for $i \in |U|$, $ Wu(i) \gets 1$
+
 \For{$t=1 \dots T$}
+\State Normalize $Wu,Wl$
 \State get fractional counts $P_{t} \gets EM(L,U,Wl,Wu)$
-\State $H_{t} \gets \text{model learned from L and fractional counts of U}$
+\State $H_{t} \gets \text{model learned from L, fractional counts of U}$
 \State $\epsilon_{t} = \sum_{i=1}^{|L|} Wl_{i}(1-\delta(h_{t}(L_{i}),y_{i}))$
 \State $\epsilon_{t} += \sum_{i=1}^{|U|} Wu_{i}(1-\delta(h_{t}(L_{i}),{P_{t,}}_{h_{t}(L_{i})}))$
-\State if $|U| > 0$ then $\epsilon /=2$
+\State if $|U| > 0$ then $\epsilon /= 2$
 \State $\beta_{t} \gets \frac{\epsilon_{t}}{1-\epsilon_{t}}$
 \State for $i,h_{t}(L_{i} = y_{i}) \in |L| Wl(i) \gets Wl(i)*\beta_{t}$
-\State for $i \in |U| ul(i) \gets Wu(i)*\beta_{t}$
+\State for $i \in |U|$, $Wl(i) \gets Wu(i)*\beta_{t}$
 
 \EndFor
 \State \textbf{return} $\arg \max_{y} \sum_{i=1}^{T}\bigg(\log(\frac{1}{\beta_{t}}\bigg) \delta(\bf{x},y)$
@@ -200,8 +209,23 @@ For each combination of these parameters, we averaged the resulting accuracies o
 
 \subsection{Results}
 
+ Among the six algorithms we ran cross validation for, we expected FullBoost to have the best average performance, JustAlg to
+have the worst average performance, and the other four algorithms to perform in between. In general this intuition was found to be true about FullBoost.
+FullBoost was the top performing algorithm in 15 of the 16 settings we tested, with a setting being a dataset/labeled fraction/base learner triple. The only algorithm to best it was BoostEM on the parkinsons data set
+with 20\% labeled data. JustAlg, however, only performed worse than all other algorithms in 5 settings. JustBoost and EM were each the worst performing algorithm
+in 5 settings.
 
- \begin{figure}
+Ideally, BoostEM would in general perform better than both JustBoost and EM since it is a generalization and combination of the two techniques. This is the case, 
+with BoostEM improving over both EM and Boost in 9 settings, and performing better than EM in 15 settings, and better than justBoost in 10. In no instances is BoostEM 
+the worst performing of the three algorithms.
+
+Somewhat surprisingly, BoostEM with 20\% of the data also outperformed using all the data on the base learner in 6 out of the 8 settings we tested.  This would seem to imply our learner can outperform a traditional base learner while only using one fifth of the labeled data.
+
+BoostEM also performs well when the amount of labeled data is decreased by a large amount (one fourth).  In most cases, BoostEM retains its accuracy better than Boost and comparably to EM.
+
+In general it seems that fluctuations in average accuracy when BoostEM uses a different base learner is mostly due to the base learner in question, as accuracy changes by BoostEM are reflected in accuracy changes using only the base learner.
+ 
+\begin{figure}
 \centering
 \includegraphics[width=0.5\textwidth]{figures/accDrops.pdf}
 \caption{Average decrease in 10 fold cross validation \% accuracy using ID3 from 20\% to 5\% of the data being labeled}
@@ -251,6 +275,7 @@ For each combination of these parameters, we averaged the resulting accuracies o
 
 \section{Discussion}
 STEVE 
+YOU COULD TALK ABOUT HOW BECAUSE BOOSTEM CAN REPLICATE BOOST AND EM THAT WE ACTUALLY COULD DO REALLY WELL
 \section{Conclusions}
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
