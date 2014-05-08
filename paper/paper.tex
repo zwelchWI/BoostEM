@@ -201,7 +201,7 @@ We evaluated the aforementioned algorithms manipulating the following parameters
 
 \begin{enumerate}
 \item \textbf{Dataset}: Breast Cancer Wisconsin (Diagnostic), Parkinsons, Banknote Authentication, Vertebral Column
-\item \textbf{Learner}: ID3 Decision Tree, Naive Bayes
+\item \textbf{Base Learner}: ID3 Decision Tree, Naive Bayes
 \item \textbf{Fraction of Labeled Instances} 5\%, 20\%
 \end{enumerate}
 
@@ -209,9 +209,76 @@ For each combination of these parameters, we averaged the resulting accuracies o
 
 \subsection{Results}
 
+In our testing, we varied our results among four datasets, two base learners, and two fractions of labeled data, for a total of sixteen data set/base learner/fraction triples, which we will define as a setting.  
+
+For the Parkinsons dataset, with $20\%$ of the total data being labeled and using an ID3 base learner, BoostEM achieved an average accuracy of 73.54\%, FullBoost 86.94\%, justBoost an accuracy of 33.14\%, fractional counts using EM 68.78\%, fullID3 84.86\%, and justID3 an accuracy of 33.04\% as visualized in Figure ~\ref{parkAcc}. With only 5\% of the total training data labeled, BoostEM increaded to 74.64\%, justBoost fell to 26.64\%, EM to 60.5\%, and justID3 managed 26.66\%.  FullBoost and fullID3 maintained their values because their inputs were not affected by the change. 
+Using instead the weka implementation of Naive Bayes, at 20\% labeled data, BoostEM's accuracy was 76.52\%, FullBoost had 69.78\%, justBoost curiously managed 74.78\%, EM 68.16\%, FullNB 70.38\%, and JustNB 71.98\%. At 5\% labeled data, BoostEM reached 69.24\%, JustBoost 42.06\%, EM 55.46\%, and JustBoost only 42.34\%.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.3\textwidth]{figures/parkAcc.pdf}
+\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
+\label{parkAcc}
+\end{figure}
+
+Using the vertebral column data and shown in Figure ~\ref{vertAcc}, 20\% labeled data, and ID3, BoostEM: 75.28\%, FullBoost: 82.4\%, JustBoost: 72.76\%, EM: 73.78\%, FullID3 80.36\%, justID3: 72.2\%.  Using 5\% data, BoostEM: 70.14\%, justBoost: 68.08\%, EM: 64.78\%, justID3: 68.04\%. 
+Using Naive Bayes and 20\% labeled data, BoostEM: 78.34\%,FullBoost: 83.46\%, justBoost: 80.04\%, EM: 76.16\%, FullNB 77.88\%, and justNB: 78.02\%. Using instead 5\% labeled data BoostEM: 70.2\%, JustBoost: 78.56\%, EM: 69.44\%, and justNB: 73.56\%.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.3\textwidth]{figures/vertAcc.pdf}
+\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
+\label{vertAcc}
+\end{figure}
+
+Banknote authentication data can be found in Figures ~\ref{bankAcc} and ~\ref{bankAcc5}. At 20\% of the labeled data, BoostEM reaches 98.12\% accuracy, FullBoost is almost perfect with 99.74\%, JustBoost with 98.38\%, EM a much lower 90.9\%, FullID3 a 96.68\%, and justID3 87.46\% accuracy.  With the smaller amount of labeled data, BoostEM averages 94.02\%, JustEM only 66.86\%, EM retains its performance with 88.62\%, and JustID3 a relatively low 62.54\%.
+Using NB instead, BoostEM had a test set accuracy of 96.12\%, FullBoost 99.18\%, JustBoost 98.52\%, EM 84.24\%, FullNB 83.86\%, and JustNB 84.38\% accuracy at one fifth labeled data. BoostEM had 93.08\%, JustBoost 95.08\%, EM with 84.64\%, and JustNB 83.32\% using one twentieth of the labeled information
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.25\textwidth]{figures/bankAcc.pdf}
+\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
+\label{bankAcc}
+\end{figure}
+\begin{figure}
+\centering
+\includegraphics[width=0.25\textwidth]{figures/bankAcc5.pdf}
+\caption{Average 10 fold cross validation \% accuracy using Naive Bayes on Various algorithms, 5\% labeled data}
+\label{bankAcc5}
+\end{figure}
+
+
+
+Finaly, with the Wisconsin Breast Cancer data, using ID3 and 20\% labeled data, the average accuracies were : BoostEM 93.5\%, FullBoost 95.62\%, justBoost 77.52\%, EM 91.08\%, FullID3 92.7\%, JustID3 78.18\%. At 5\% labeled data the results were: BoostEM 87.78\%, JustBoost 62.96\%, EM 86.24\%, and JustID3 62.96\%.
+With Naive Bayes and 20\% labeled data: BoostEM 92.64\%, FullBoost 95.4\%, JustBoost 94.08\%, EM 91.62\%, FullNB 92.6\%, and JustNB 92.48\%. at 5\% labeled data these accuracies were BoostEM 86.86\%, JustBoost 74.78\%, EM 90.66\%, and JustNB 78.32\%.
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.3\textwidth]{figures/breaAcc.pdf}
+\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
+\label{breaAcc}
+\end{figure}
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.3\textwidth]{figures/breaAcc5.pdf}
+\caption{Average 10 fold cross validation \% accuracy using Naive Bayes on Various algorithms, 5\% labeled data}
+\label{breaAcc5}
+\end{figure}
+ 
+
+\section{Discussion}
+STEVE 
+YOU COULD TALK ABOUT HOW BECAUSE BOOSTEM CAN REPLICATE BOOST AND EM THAT WE ACTUALLY COULD DO REALLY WELL
+
+\begin{figure}
+\centering
+\includegraphics[width=0.5\textwidth]{figures/accDrops.pdf}
+\caption{Average decrease in 10 fold cross validation \% accuracy using ID3 from 20\% to 5\% of the data being labeled}
+\label{accDrop}
+\end{figure}
+
  Among the six algorithms we ran cross validation for, we expected FullBoost to have the best average performance, JustAlg to
 have the worst average performance, and the other four algorithms to perform in between. In general this intuition was found to be true about FullBoost.
-FullBoost was the top performing algorithm in 15 of the 16 settings we tested, with a setting being a dataset/labeled fraction/base learner triple. The only algorithm to best it was BoostEM on the parkinsons data set
+FullBoost was the top performing algorithm in 15 of the 16 settings we tested.
+The only algorithm to best it was BoostEM on the parkinsons data set
 with 20\% labeled data. JustAlg, however, only performed worse than all other algorithms in 5 settings. JustBoost and EM were each the worst performing algorithm
 in 5 settings.
 
@@ -224,58 +291,8 @@ Somewhat surprisingly, BoostEM with 20\% of the data also outperformed using all
 BoostEM also performs well when the amount of labeled data is decreased by a large amount (one fourth).  In most cases, BoostEM retains its accuracy better than Boost and comparably to EM.
 
 In general it seems that fluctuations in average accuracy when BoostEM uses a different base learner is mostly due to the base learner in question, as accuracy changes by BoostEM are reflected in accuracy changes using only the base learner.
- 
-\begin{figure}
-\centering
-\includegraphics[width=0.5\textwidth]{figures/accDrops.pdf}
-\caption{Average decrease in 10 fold cross validation \% accuracy using ID3 from 20\% to 5\% of the data being labeled}
-\label{accDrop}
-\end{figure}
- 
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{figures/bankAcc.pdf}
-\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
-\label{bankAcc}
-\end{figure}
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{figures/parkAcc.pdf}
-\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
-\label{parkAcc}
-\end{figure}
 
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{figures/breaAcc.pdf}
-\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
-\label{breaAcc}
-\end{figure}
 
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{figures/vertAcc.pdf}
-\caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
-\label{vertAcc}
-\end{figure}
-
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{figures/bankAcc5.pdf}
-\caption{Average 10 fold cross validation \% accuracy using Naive Bayes on Various algorithms, 5\% labeled data}
-\label{vertAcc}
-\end{figure}
-
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{figures/breaAcc5.pdf}
-\caption{Average 10 fold cross validation \% accuracy using Naive Bayes on Various algorithms, 5\% labeled data}
-\label{vertAcc}
-\end{figure}
-
-\section{Discussion}
-STEVE 
-YOU COULD TALK ABOUT HOW BECAUSE BOOSTEM CAN REPLICATE BOOST AND EM THAT WE ACTUALLY COULD DO REALLY WELL
 \section{Conclusions}
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
