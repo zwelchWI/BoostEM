@@ -123,14 +123,16 @@ We introduce BoostEM, a semi-supervised learning algorithm which combines the be
 % A category with the (minimum) three required fields
 \section{Introduction}
 
-It is well established in Machine Learning that labels are difficult to obtain while unlabeled data are abundant in many situations where we would like to classify new instances. Examples of such situations are labeling x-rays as benign or malignant, tweets as instances of bullying, news articles as interesting to a given reader, or whether a photograph contains a given object. Because of this scarcity of labeled instances, using semi-supervised learning techniques, such as Expectation Maximization, to combine unlabeled and labeled data into an integrated model is a good idea to potentially improve learner accuracy and reduce human labour.
+In many machine learning classification problems, labels are difficult to obtain while unlabeled data are abundant. Examples of such situations are labeling x-rays as benign or malignant, tweets as instances of bullying, news articles as interesting to a given reader, or whether a photograph contains a given object. Because of this scarcity of labeled instances, using semi-supervised learning techniques, such as Expectation Maximization, to combine unlabeled and labeled data into an integrated model is a good idea to potentially improve learner accuracy and reduce human labour.
 
 This paper describes the development and evaluation of a semi-supervised learning algorithm, BoostEM, which combines the benefits of an ensemble method like Boosting with the benefits of using unlabeled data. The next section provides an overview of related work on Boosting and Expectation Maximization. This section is followed by the details of the BoostEM algorithm and an experimental evaluation of our implementation. We then present the results of our evaluation and discuss our findings and their implications.
 
 \section{Background}
 \subsection{Boost}
+Boosting is an ensemble method which uses a set of learners trained on weighted versions of a training set. A popular boosting algorithm is known as AdaBoost (short for Adaptive Boost) originally detailed in ~\cite{Freund:1997:DGO:261540.261549}.  AdaBoost works by giving each training set instance a weight $W_{i}$; initially all weights are equal. Over some number of iterations, AdaBoost trains a base learner (ID3 decision trees, Naive Bayes, etc) proportionally to the weights of each instance. The weighted training set error $\epsilon$ of this base learner is calculated and if more than half of the instances by weight were incorrect AdaBoost quits.  Otherwise, $\beta=\frac{\epsilon}{1-\epsilon}$ is applied to all of the correctly guessed instances, decreasing their weights.  This means that in the next iteration, incorrectly classified instances will be given more importance.  AdaBoost then essentially drives up the importance of difficult to classify training set instances in an effort to correctly learn them.  To classify a new instance $\bf{x}$, with base learners $H_{1} \dots H_{T}$  $\arg \max_{y} \sum_{i=1}^{T}\bigg(\log(\frac{1}{\beta_{t}})\bigg) \delta(H_{t}(\bf{x}),y)$ where $\delta(a,b)$ is the indicator function.
+ 
 
-~\cite{Freund:1997:DGO:261540.261549}
+Empirical studies ~\cite{dietterich1997machine} have shown that in a large majority of instances AdaBoost improves accuracy over the base learner.  There are a few occasions however where using Boosting can hurt performance.  This implies that when using AdaBoost, one should take care to compare results from the combined learner to those from a base learner.
 
 \subsection{Expectation Maximization}
 Expectation is an iterative algorithm which uses the values of existing,complete data points to compute the maximum likelihood estimate for missing values for other, incomplete data. Expectation Maximization was originally introduced in ~\cite{Dempster77maximumlikelihood} and produces a probabalistic distribution of the possible values of missing data given fully labeled data. In the context of semi-supervised learning, there is a set of labeled input data and a potentially much larger set of unlabeled data and for each unlabeled instance u, EM can provide a probability for each label.  These probabilities can be used as fractional instances of labeled data, making the input training set much bigger and diverse and potentially giving a better approximation of the distribution of labels to the learner. In many cases, performance can be drastically improved by using these fractional counts.
@@ -140,7 +142,8 @@ Expectation maximization is a general approach and can be augmented to suite a v
      
 \section{Related Work}
 \section{BoostEM}
-The main insight of BoostEM is observing that Boost and Expectation Maximization both attempt to improve the current iteration's results by using information from the previous iteration; BoostEM simply couples the results of the two algorithms together to improve results.  BoostEM uses a weighted EM algorithm, and these weights are identical to the weights used in the Boost algorithm.  At it's most basic level, BoostEM simply runs a weighted Expectation Maximization on the unlabeled instances, and uses the fractional counts to create a weighted training set for some base learner.  The results of this base learner are then used to update the weights, which are then input to EM in the next iteration.
+The main insight of BoostEM is observing that Boost and Expectation Maximization both attempt to improve the current iteration's results by using information from the previous iteration; BoostEM simply couples the results of the two algorithms together to improve results.  BoostEM uses a weighted EM algorithm, and these weights are identical to the weights used in the Boost algorithm.  At it's most basic level, BoostEM simply runs a weighted Expectation Maximization on the unlabeled instances, and uses the fractional counts to create a weighted training set for some base learner.  The results of this base learner are then used to update the weights, which are then input to EM in the next iteration. 
+
 
 \begin{algorithm}
 \caption{BoostEM}\label{euclid}
@@ -166,21 +169,28 @@ The main insight of BoostEM is observing that Boost and Expectation Maximization
 \State for $i \in |U|$, $Wl(i) \gets Wu(i)*\beta_{t}$
 
 \EndFor
-\State \textbf{return} $\arg \max_{y} \sum_{i=1}^{T}\bigg(\log(\frac{1}{\beta_{t}}\bigg) \delta(\bf{x},y)$
+\State \textbf{return} $\arg \max_{y} \sum_{i=1}^{T}\bigg(\log(\frac{1}{\beta_{t}})\bigg) \delta(H_{t}(\bf{x}),y)$
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
 
-By using a weighted EM, we can place more emphasis on the instances our learner incorrectly classifies in the Gaussian distribution of instances we assume. Or more correctly, since there is no ground truth to the unlabeled instances, we can penalize every prediction from learner $H$ on unlabeled instance $x$ by $1-p(H(x))$, where $p(\dot)$ is the distribution of labels from EM.  In this way, the learner penalizes unexpected labels (ones with small probability) more than expected ones.
+
+ Using an unweighted version of Expectation Maximization is possible, but since the training set data itself is not changing, the fractional counts will not change from iteration to iteration. By combining the AdaBoost weights with the EM algorithm, BoostEM is able to alter the distribution and get an updated set of fractional counts in each iteration of BoostEM.   By using a weighted EM, we can place more emphasis on the instances our learner incorrectly classifies in the Gaussian distribution of instances we assume. Or more correctly, since there is no ground truth to the unlabeled instances, we can penalize every prediction from learner $H$ on unlabeled instance $x$ by $1-p(H(x))$, where $p$ is the distribution of labels from EM.  In this way, the learner penalizes unexpected labels (ones with small probability) more than expected ones.
+
+
 
 Notice as well that using Expectation Maximization for fractional counts and adaBoost can be recovered from BoostEM by setting certain inputs and parameters.  Setting the number of boosting iterations to 1 is equivalent to EM, while inputting no unlabeled instances reduces to traditional labeled Boosting.    
     
 \section{Evaluation}
 We implemented the BoostEM algorithm in \textsc{python} and evaluated its accuracy against a number of other algorithms using two learners and a variety of parameter settings  as described below.
 
+
 \subsection{Data sets}
 
 We evaluated the performance of our algorithm on four data sets from the UCI Machine Learning Repository: Breast Cancer Wisconsin (Diagnostic), which classifies digitized images of breast mass as benign or malignant; Parkinsons, which classifies biomedical voice measurements from patients as healthy or Parkinson's; Banknote Authentication, which classifies pictures of currency as genuine or foraged; and Vertebral Column, which classifies biomedical data from patients as either normal or abnormal vertebral column. Each dataset is for a binary classification task, and each attribute is real-valued. For each dataset, the number of attributes ranges from 5 to 32 and the number of instances ranges from 197 to 1372. 
+
+\subsection{Implementation Details}
+In our testing, we only attempt to test BoostEM in classification.  Because of this, we choose to use a Gaussian mixture model as the underlying model for data. Given a classification label, we assume the conditional distribution of the data to be gaussian distributed. One of the benefits of assuming an underlying distribution in Expectation Maximization is that it allows us to use both labeled data and a potentially much larger amount of unlabeled data in the maximization step. This choice may not be appropriate for all data sets; we choose Gaussian mixture models because many data sets can be roughly approximated by such a model.  A different underlying models which provides a better fit to the data will produce likely produce better results.  An overview of EM and Gaussian Mixture Models can be found in ~\cite{zhu2009introduction}.
 
 \subsection{Benchmark Algorithms}
 
@@ -294,8 +304,11 @@ In general it seems that fluctuations in average accuracy when BoostEM uses a di
 
 
 \section{Conclusions}
+We present BoostEM, a semi-supervised ensemble method.  BoostEM works by combining fractional counts from using the Expectation Maximization algorithm with the AdaBoost ensemble method.  We tested BoostEM on four large datasets from the UCI repository, performing 10-fold cross validation and five random restarts for EM.  We compared using 20\% labeled data to 5\% labeled data, the rest being unalbeled and used ID3 decision trees and Naive Bayes as base learners.  BoostEM was compared to Boosting with 100\% of the data, Boosting with only the percentage of labeled data, performing only Expectation Maximization on the unlabeled data and using the base learner, using the base learner on all the data, and finally using only the subset of unlabeled data with a base learner. We found that in the majority of settings, BoostEM outperforms using only Boosting or only Expectation Maximization.  Additionally, we found that across data sets and base learners that BoostEM performs comparably to only using a base learner, but with only one fifth of the labeled data. Since with specific parameters, BoostEM can replicate both AdaBoost and EM, BoostEM can always achieve performance on a data set at least as well as them, and we have shown that in many cases BoostEM can also improve performance.
+
 %ACKNOWLEDGMENTS are optional
 \section{Acknowledgments}
+Zach would like to thank his cats, who only broke one of his coffee mugs in the course of this project.
 
 \bibliographystyle{abbrv}
 \bibliography{paper}  % sigproc.bib is the name of the Bibliography in this case
