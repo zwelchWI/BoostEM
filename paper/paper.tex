@@ -117,7 +117,7 @@ Steven Johnson\\
 
 \maketitle
 \begin{abstract}
-We introduce BoostEM, a semi-supervised learning algorithm which combines the benefits of using an ensemble method like Boosting with the benefits of using unlabeled data.  BoostEM is intended for use in learning settings with an abundance of unlabeled data, and outperforms the traditional AdaBoost algorithm and learning with fractional data from using Expectation Maximization across a variety of base learners and data sets.
+We introduce BoostEM, a semi-supervised ensemble method which combines the benefits of using an ensemble method like Boosting with the benefits of using unlabeled data.  BoostEM is intended for learning settings with an abundance of unlabeled data. By using the weights from each iteration of AdaBoost as weights in Expectation Maximization, BoostEM can refocus its underlying model of the data distribution to place more emphasis on difficult to classify instances. BoostEM combines AdaBoost and using fractional count data via Expectation maximization, and with specific parameters BoostEM can reduce to either algorithm.  BoostEM  outperforms the traditional AdaBoost  and learning with fractional data from using Expectation Maximization across a variety of base learners and data sets.  Additionally, we have found that BoostEM performs comparably to only using its base learner (ID3 decision trees and Naive Bayes were tested) with one fifth of the labeled data.  
 \end{abstract}
 
 % A category with the (minimum) three required fields
@@ -128,19 +128,33 @@ In many machine learning classification problems, labels are difficult to obtain
 This paper describes the development and evaluation of a semi-supervised learning algorithm, BoostEM, which combines the benefits of an ensemble method like Boosting with the benefits of using unlabeled data. The next section provides an overview of related work on Boosting and Expectation Maximization. This section is followed by the details of the BoostEM algorithm and an experimental evaluation of our implementation. We then present the results of our evaluation and discuss our findings and their implications.
 
 \section{Background}
-\subsection{Boost}
+\subsection{AdaBoost}
 Boosting is an ensemble method which uses a set of learners trained on weighted versions of a training set. A popular boosting algorithm is known as AdaBoost (short for Adaptive Boost) originally detailed in ~\cite{Freund:1997:DGO:261540.261549}.  AdaBoost works by giving each training set instance a weight $W_{i}$; initially all weights are equal. Over some number of iterations, AdaBoost trains a base learner (ID3 decision trees, Naive Bayes, etc) proportionally to the weights of each instance. The weighted training set error $\epsilon$ of this base learner is calculated and if more than half of the instances by weight were incorrect AdaBoost quits.  Otherwise, $\beta=\frac{\epsilon}{1-\epsilon}$ is applied to all of the correctly guessed instances, decreasing their weights.  This means that in the next iteration, incorrectly classified instances will be given more importance.  AdaBoost then essentially drives up the importance of difficult to classify training set instances in an effort to correctly learn them.  To classify a new instance $\bf{x}$, with base learners $H_{1} \dots H_{T}$  $\arg \max_{y} \sum_{i=1}^{T}\bigg(\log(\frac{1}{\beta_{t}})\bigg) \delta(H_{t}(\bf{x}),y)$ where $\delta(a,b)$ is the indicator function.
  
 
 Empirical studies ~\cite{dietterich1997machine} have shown that in a large majority of instances AdaBoost improves accuracy over the base learner.  There are a few occasions however where using Boosting can hurt performance.  This implies that when using AdaBoost, one should take care to compare results from the combined learner to those from a base learner.
 
 \subsection{Expectation Maximization}
-Expectation is an iterative algorithm which uses the values of existing,complete data points to compute the maximum likelihood estimate for missing values for other, incomplete data. Expectation Maximization was originally introduced in ~\cite{Dempster77maximumlikelihood} and produces a probabalistic distribution of the possible values of missing data given fully labeled data. In the context of semi-supervised learning, there is a set of labeled input data and a potentially much larger set of unlabeled data and for each unlabeled instance u, EM can provide a probability for each label.  These probabilities can be used as fractional instances of labeled data, making the input training set much bigger and diverse and potentially giving a better approximation of the distribution of labels to the learner. In many cases, performance can be drastically improved by using these fractional counts.
+Expectation is an iterative algorithm which uses the values of existing,complete data points to compute the maximum likelihood estimate for missing values for other, incomplete data. Expectation Maximization was originally introduced in ~\cite{Dempster77maximumlikelihood} and produces a probabalistic distribution of the possible values of missing data given fully labeled data. Expectation maximization is not itself a learning algorithm in the way ID3 or Naive Bayes are, though it is often used with unlabeled data.
+
+ In the context of semi-supervised learning, there is a set of labeled input data and a potentially much larger set of unlabeled data and for each unlabeled instance u, EM can provide a probability for each label.  As originally described in ~\cite{nigam2000text}, these probabilities can be used as fractional instances of labeled data, making the input training set much bigger and diverse and potentially giving a better approximation of the distribution of labels to the learner. In many cases, performance can be drastically improved by using these fractional counts. Even if the learner in question cannot handle a fractional amount of a data point (and many cannot), this can be avoided by sampling a much larger training set, with each instance existing proportional to its fractional count.  In this way using fractional data can be roughly approximated.
 
 Expectation maximization is a general approach and can be augmented to suite a variety of settings and assumptions.  For instance, in our implementation of BoostEM we assume the data is well modeled by a Gaussian mixture model and the instances have weights associated with them.    
 
      
 \section{Related Work}
+Semi-supervised learning and Ensemble Methods are both extremely well studied research areas; for surveys of semi-supervised learning and ensemble methods, we direct the reader to ~\cite{zhu05survey} and ~\cite{dietterichl2002ensemble} respectively. 
+
+Additionally, combining unlabeled instances with ensemble methods is not a new idea.  Blum and Mitchell's well known Co-training algorithm  ~\cite{blum1998combining} uses two learners trained on subsets of data to improve performance with unlabeled data.  By using the confidence of a prediction from one learner to expand the labeled training set for the other learner, overall performance can be drastically improved over using only the explicitly labeled data.  The independence requirements for the features of the two learners are quite strong. 
+
+In ~\cite{li2007improve}, the idea of using two learners with independent sets of features was extended and combined with the popular ensemble method of random forests ~\cite{breiman2001random} to create the Co-forest algorithm. Because Co-forests use larger numbers of classifiers instead of two, it is very unlikely the strong independence requirments from Co-training will apply, and so they are relaxed.
+
+Many semi-supervised ensemble methods, including BoostEM, use the AdaBoost algorithm due to its performance increases. These algorithms differ in how they assign ``effective'' class labels to the large amount of unlabeled data.  BoostEM uses weighted Expectation Maximization to infer a probability distribution amongst labels. In ~\cite{bennett2002exploiting}, the ASSEMBLE algorithm generates provisional classes for unlabeled using Suport Vector Machine esque large margins on the weighted labeled instances.  Though we have run no tests, we suspect that if our soft EM algorithm were replaced with a hard EM algorithm, BoostEM would produce similar behavior to ASSEMBLE. Margin assumptions are similarly used in ~\cite{grandvalet2001semi}
+
+In ~\cite{kumar2009semiboost}, the SemiBoost framework is discussed. SemiBoost is a general framework for integrating many graph and cluster based semi-supervised learning methods in an iterative Boosting algorithm.  SemiBoost is very general and it is likely that implementations like ASSEMBLE and BoostEM are realizations of the SemiBoost Framework.  
+
+
+
 \section{BoostEM}
 The main insight of BoostEM is observing that Boost and Expectation Maximization both attempt to improve the current iteration's results by using information from the previous iteration; BoostEM simply couples the results of the two algorithms together to improve results.  BoostEM uses a weighted EM algorithm, and these weights are identical to the weights used in the Boost algorithm.  At it's most basic level, BoostEM simply runs a weighted Expectation Maximization on the unlabeled instances, and uses the fractional counts to create a weighted training set for some base learner.  The results of this base learner are then used to update the weights, which are then input to EM in the next iteration. 
 
@@ -148,12 +162,12 @@ The main insight of BoostEM is observing that Boost and Expectation Maximization
 \begin{algorithm}
 \caption{BoostEM}\label{euclid}
 \begin{algorithmic}[1]
-\Procedure{BoostEM}{$L,U,H,T$}
 \State L=Labeled Data
 \State U=Unlabeled Data
 \State H=Learner
 \State T=Number of Boost iterations
 
+\Procedure{BoostEM}{$L,U,H,T$}
 \State for $i \in |L|$, $ Wl(i) \gets 1$
 \State for $i \in |U|$, $ Wu(i) \gets 1$
 
@@ -226,7 +240,7 @@ Using instead the weka implementation of Naive Bayes, at 20\% labeled data, Boos
 
 \begin{figure}
 \centering
-\includegraphics[width=0.3\textwidth]{figures/parkAcc.pdf}
+\includegraphics[width=0.35\textwidth]{figures/parkAcc.pdf}
 \caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
 \label{parkAcc}
 \end{figure}
@@ -236,7 +250,7 @@ Using Naive Bayes and 20\% labeled data, BoostEM: 78.34\%,FullBoost: 83.46\%, ju
 
 \begin{figure}
 \centering
-\includegraphics[width=0.3\textwidth]{figures/vertAcc.pdf}
+\includegraphics[width=0.35\textwidth]{figures/vertAcc.pdf}
 \caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
 \label{vertAcc}
 \end{figure}
@@ -245,13 +259,13 @@ Banknote authentication data can be found in Figures ~\ref{bankAcc} and ~\ref{ba
 Using NB instead, BoostEM had a test set accuracy of 96.12\%, FullBoost 99.18\%, JustBoost 98.52\%, EM 84.24\%, FullNB 83.86\%, and JustNB 84.38\% accuracy at one fifth labeled data. BoostEM had 93.08\%, JustBoost 95.08\%, EM with 84.64\%, and JustNB 83.32\% using one twentieth of the labeled information
 \begin{figure}[ht!]
 \centering
-\includegraphics[width=0.25\textwidth]{figures/bankAcc.pdf}
+\includegraphics[width=0.35\textwidth]{figures/bankAcc.pdf}
 \caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
 \label{bankAcc}
 \end{figure}
 \begin{figure}
 \centering
-\includegraphics[width=0.25\textwidth]{figures/bankAcc5.pdf}
+\includegraphics[width=0.35\textwidth]{figures/bankAcc5.pdf}
 \caption{Average 10 fold cross validation \% accuracy using Naive Bayes on Various algorithms, 5\% labeled data}
 \label{bankAcc5}
 \end{figure}
@@ -262,13 +276,13 @@ Finaly, with the Wisconsin Breast Cancer data, using ID3 and 20\% labeled data, 
 With Naive Bayes and 20\% labeled data: BoostEM 92.64\%, FullBoost 95.4\%, JustBoost 94.08\%, EM 91.62\%, FullNB 92.6\%, and JustNB 92.48\%. at 5\% labeled data these accuracies were BoostEM 86.86\%, JustBoost 74.78\%, EM 90.66\%, and JustNB 78.32\%.
 \begin{figure}[ht!]
 \centering
-\includegraphics[width=0.3\textwidth]{figures/breaAcc.pdf}
+\includegraphics[width=0.35\textwidth]{figures/breaAcc.pdf}
 \caption{Average 10 fold cross validation \% accuracy using ID3 on Various algorithms, 20\% labeled data}
 \label{breaAcc}
 \end{figure}
 \begin{figure}[ht!]
 \centering
-\includegraphics[width=0.3\textwidth]{figures/breaAcc5.pdf}
+\includegraphics[width=0.35\textwidth]{figures/breaAcc5.pdf}
 \caption{Average 10 fold cross validation \% accuracy using Naive Bayes on Various algorithms, 5\% labeled data}
 \label{breaAcc5}
 \end{figure}
@@ -280,7 +294,7 @@ YOU COULD TALK ABOUT HOW BECAUSE BOOSTEM CAN REPLICATE BOOST AND EM THAT WE ACTU
 
 \begin{figure}
 \centering
-\includegraphics[width=0.5\textwidth]{figures/accDrops.pdf}
+\includegraphics[width=0.35\textwidth]{figures/accDrops.pdf}
 \caption{Average decrease in 10 fold cross validation \% accuracy using ID3 from 20\% to 5\% of the data being labeled}
 \label{accDrop}
 \end{figure}
